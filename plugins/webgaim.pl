@@ -1,10 +1,10 @@
 HTTP/1.1 200 OK
-Date: Sun, 23 Nov 2014 20:54:02 GMT
+Date: Sun, 23 Nov 2014 20:54:06 GMT
 Server: Apache/2.2.8 (Ubuntu) DAV/2 SVN/1.4.6 PHP/5.2.4-2ubuntu5.1 with Suhosin-Patch
 Last-Modified: Tue, 20 Sep 2005 13:38:50 GMT
-ETag: "4a17e-6180-401342e168e80"
+ETag: "4a17f-66f1-401342e168e80"
 Accept-Ranges: bytes
-Content-Length: 24960
+Content-Length: 26353
 Keep-Alive: timeout=15, max=100
 Connection: Keep-Alive
 Content-Type: text/x-perl
@@ -97,7 +97,6 @@ my $who_am_i : shared = "Me";
 
 my @todo : shared = ();          # List of work items to be done in the timer callback 
 
-
 #
 # Plugin info structure
 #
@@ -105,7 +104,7 @@ my @todo : shared = ();          # List of work items to be done in the timer ca
 %PLUGIN_INFO = (
     perl_api_version => 2,
     name             => "WebGaim",
-    version          => "0.1",
+    version          => "0.4",
     summary          => "Web intrerface to gaim.",
     description      => "Alows your active gaim session to be also visible over the internet. Thus accessible with WEB capable devices such as smart phones",
     author           => "Sebastian Sobolewski <spsobole\@yahoo.com>",
@@ -124,6 +123,7 @@ sub plugin_init {
 sub plugin_unload {
     my $plugin = shift;
 	close( S );
+	sleep(1);
 }
 
 #
@@ -146,7 +146,7 @@ sub plugin_load {
 	Gaim::signal_connect(Gaim::BuddyList::handle, "buddy-signed-off", $plugin, \&buddy_signed_off_cb, \%data);
 	
 	$thr = threads->new(\&gaim_webserver);
-	Gaim::timeout_add($plugin, 1, \&timeout_cb, "todo");
+	Gaim::timeout_add($plugin, 1, \&timeout_cb, NULL );
 	&update_account_status();
 	&update_buddy_list();
 }
@@ -305,9 +305,41 @@ sub logout{
 #
 # Post a message into a conversation
 #
+sub send_borked{
+	my $line = shift;
+	($to,$msg) = split(/=/,$line,2);
+	Gaim::debug_info($WEBGAIM,"ENTER send [$to]:[$msg]\n");
+	$to = buddy_real( $to );
+		
+	my @gaim_conversations = Gaim::conversations();
+	while( @gaim_conversations )
+	{
+		my $gaim_conv = shift( @gaim_conversations );
+		my $name = Gaim::Conversation::get_name( $gaim_conv );
+		
+		if( $name eq "$to" )
+		{
+			if( $gaim_conv->is_im() )
+			{
+				Gaim::Conversation::IM::send( $gaim_conv, $msg  );
+			}
+			elsif( $gaim_conv->is_chat() )
+			{
+				Gaim::Conversation::Chat::send( $gaim_conv, $msg  );
+			}
+			#Gaim::debug_info($WEBGAIM,"sent [$to]:[$msg]\n");
+		}
+		Gaim::debug_info($WEBGAIM,"sent [$to]:[$name]\n");
+	}
+	Gaim::debug_info($WEBGAIM,"EXIT: sent\n");
+	return undef;
+}
+
+
 sub send{
 	my $line = shift;
 	($to,$msg) = split(/=/,$line,2);
+	$to = buddy_real( $to );
 	Gaim::debug_info($WEBGAIM,"ENTER send [$to]:[$msg]\n");
 	
 	my @gaim_ims = Gaim::ims();
@@ -374,7 +406,8 @@ sub add_chat_msg
 sub start_chat_simple{
 	my $to = shift;
 	my $found = 0;
-
+	$to = buddy_real( $to );
+	
 		
 	my @groups = Gaim::BuddyList::groups();
 	while( @groups )
@@ -387,8 +420,9 @@ sub start_chat_simple{
 		@buddies = Gaim::BuddyList::Group::buddies( $group );
 		while( @buddies )
 		{
-			$buddy = shift( @buddies );
-			$buddy_name = Gaim::BuddyList::Buddy::get_name($buddy);
+			my $buddy = shift( @buddies );
+			my $buddy_name = Gaim::BuddyList::Buddy::get_name($buddy);
+			
 			Gaim::debug_info($WEBGAIM,"search:[$to]::group:$group_name::$buddy_name\n");
 			if( $buddy_name eq $to )
 			{
@@ -434,6 +468,7 @@ sub start_chat_simple{
 			#           If anyone knows a better way to do this please let me know :)
 			#$g_conv{$to} = Gaim::Conversation::IM::new( $new_account , $to );
 			$g_conv{$to} = Gaim::Conversation::IM::new( $new_account , $to );
+			
 		}
 	}
 }
@@ -724,7 +759,8 @@ sub service {
 			$name=~ s/\&//s;
 			$query="$name=$rest";
 			&submit_work("send:$query");
-			add_chat_msg($name,$who_am_i,$rest);
+			my $real_name = buddy_real( $name );
+			add_chat_msg($real_name,$who_am_i,$rest);
 			&chat( $name );
 		}	
 		else
@@ -844,7 +880,6 @@ sub home()
 		}
 	}
 	
-	
 	if( $logedin )
 	{
 		print NS "Buddies:<BR>\n";
@@ -852,11 +887,12 @@ sub home()
 		{
 			lock( @buddies_online );
 			@buddies_tmp = @buddies_online;
+			#push(@buddies_tmp,"Buddy with spaces");
 		}
 		while( @buddies_tmp )
 		{
-			$name = shift( @buddies_tmp );
-			
+			my $name = shift( @buddies_tmp );
+			my $new_name = buddy_clean($name);
 			lock(%g_chat_contents);
 			
 			if( exists( $g_chat_hash{$name} ) )
@@ -869,17 +905,17 @@ sub home()
 					$new = $g_chat_lines{$name};
 				}
 			
-				print NS " + <A HREF=chat?$name>$name ( $new New )</A><BR>\n";
+				print NS " + <A HREF=chat?$new_name>$name ( $new New )</A><BR>\n";
 			}
 			else
 			{
-				print NS " + <A HREF=start-chat?$name>$name<A>";
+				print NS " + <A HREF=start-chat?$new_name>$name<A>";
 				if( exists( $g_chat_contents{$name} ) )
 				{
 					$lines = $g_chat_contents{$name} ;
 					if( $lines ne "" )
 					{
-						print NS " ( <A HREF=log?$name>Log</A> )";
+						print NS " ( <A HREF=log?$new_name>Log</A> )";
 					}
 				}
 				print NS "<BR>\n";
@@ -889,7 +925,7 @@ sub home()
 	else
 	{
 		print NS "Not loged into any accounts<BR>\n";
-		print NS "<A HREF=login?>Login All</A><BR>\n";
+		#print NS "<A HREF=login?>Login All</A><BR>\n";
 	}
 }
 
@@ -938,7 +974,7 @@ sub see_also()
 		
 		while( @buddies_tmp )
 		{
-			$name = shift( @buddies_tmp );
+			my $name = shift( @buddies_tmp );
 			
 			if( exists( $g_chat_hash{$name} ) )
 			{
@@ -958,7 +994,8 @@ sub see_also()
 				
 				if( $new > 0 )
 				{
-					$lines = "$lines + <A HREF=chat?$name>$name ( $new New )</A><BR>\n";
+					my $new_name = buddy_clean( $name );
+					$lines = "$lines + <A HREF=chat?$new_name>$name ( $new New )</A><BR>\n";
 				}
 			}
 			else
@@ -1008,6 +1045,7 @@ sub BuddyList{
 sub log
 {
 	my ($sender) = @_;
+	$sender = buddy_real( $sender );
 	&webgaim_header("log?$sender");
 	lock(%g_chat_contents);
 	$lines = $g_chat_contents{$sender};
@@ -1037,9 +1075,10 @@ sub chat
 	my @lines = ();
 	my $count = 0;
 	my $new_lines = "";
+	my $real_sender = buddy_real( $sender );
 	&webgaim_header("chat?$sender");
 	lock(%g_chat_contents);
-	$lines = $g_chat_contents{$sender};
+	$lines = $g_chat_contents{$real_sender};
 	
 	
 	#
@@ -1097,7 +1136,7 @@ sub chat
 				$real_who = $who;
 			}	
 			
-			if( $real_who eq $sender )
+			if( $real_who eq $real_sender )
 			{
 			
 				print NS "<FONT COLOR=$opt_color_me><B>$who:</B>$msg</FONT><BR>\n";
@@ -1109,8 +1148,8 @@ sub chat
 		}
 	}
 	
-	$g_chat_contents{$sender} = $new_lines;
-	$g_chat_lines{$sender}    = 0;
+	$g_chat_contents{$real_sender} = $new_lines;
+	$g_chat_lines{$real_sender}    = 0;
 	#
 	# Now Add A message box:
 	#
@@ -1141,4 +1180,26 @@ sub submit_work{
 		lock( @todo );
 		push(@todo,"$work");
 	}
+}
+
+#############################
+# Sanitize buddy names
+#
+sub buddy_clean
+{
+	my ($new_name) = @_;
+	
+	$new_name =~ s/\\/\\\\/g;
+	$new_name =~ s/ /\\sp/g;
+	return $new_name;
+}
+
+sub buddy_real
+{
+	my ($new_name) = @_;
+	
+	$new_name =~ s/\\\\/\\/g;
+	$new_name =~ s/\\sp/ /g;
+	
+	return $new_name;
 }

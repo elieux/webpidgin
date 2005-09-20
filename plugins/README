@@ -1,3 +1,6 @@
+webgaim.pl:
+    Perl Plugin for gaim. Not recommended.
+
 webgaim.c:
     Plugin for GAIM prior to the Pidgin change over.  This code is no longer supported, but here for people who still run the old GAIM codebase.
 
