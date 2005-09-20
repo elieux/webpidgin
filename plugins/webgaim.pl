@@ -1,10 +1,10 @@
 HTTP/1.1 200 OK
-Date: Sun, 23 Nov 2014 20:53:49 GMT
+Date: Sun, 23 Nov 2014 20:54:02 GMT
 Server: Apache/2.2.8 (Ubuntu) DAV/2 SVN/1.4.6 PHP/5.2.4-2ubuntu5.1 with Suhosin-Patch
 Last-Modified: Tue, 20 Sep 2005 13:38:50 GMT
-ETag: "4a17d-5fec-401342e168e80"
+ETag: "4a17e-6180-401342e168e80"
 Accept-Ranges: bytes
-Content-Length: 24556
+Content-Length: 24960
 Keep-Alive: timeout=15, max=100
 Connection: Keep-Alive
 Content-Type: text/x-perl
@@ -38,6 +38,8 @@ use Gaim;
 use threads;
 use threads::shared;
 
+#use strict;
+#use warnings;
 
 ####################################################
 # Options Block:
@@ -62,8 +64,8 @@ my $opt_auth         = "";
 # Load all of the above $opt_xxxxx parameters from a config file instead
 #
 
-$home = $ENV{"HOME"};
-$config =  "$home/.gaim/webgaim.cfg";
+my $home = $ENV{"HOME"};
+my $config =  "$home/.gaim/webgaim.cfg";
 
 if( -e "$config" )
 {
@@ -78,7 +80,7 @@ else
 #
 # END OPTIONS
 ####################################################
-$WEBGAIM = "webgaim";
+my $WEBGAIM = "webgaim";
 
 my %g_conv = ();
 
@@ -129,19 +131,19 @@ sub plugin_unload {
 #
 sub plugin_load {
 	$plugin = shift;
-	my $data   = "";
+	#my $data   = "";
 	
 	Gaim::signal_connect(Gaim::Connections::handle, "signed-on",
-                         $plugin, \&signed_on_cb, $data);
+                         $plugin, \&signed_on_cb, \%data);
 	Gaim::signal_connect(Gaim::Connections::handle, "signed-off",
-                         $plugin, \&signed_off_cb, $data);
+                         $plugin, \&signed_off_cb, \%data);
 						 
 	
 	Gaim::signal_connect(Gaim::Conversations::handle, "received-im-msg",
-                         $plugin, \&received_msg_cb, $data);
+                         $plugin, \&received_msg_cb, \%data);
 
-	Gaim::signal_connect(Gaim::BuddyList::handle, "buddy-signed-on", $plugin, \&buddy_signed_on_cb, $data);
-	Gaim::signal_connect(Gaim::BuddyList::handle, "buddy-signed-off", $plugin, \&buddy_signed_off_cb, $data);
+	Gaim::signal_connect(Gaim::BuddyList::handle, "buddy-signed-on", $plugin, \&buddy_signed_on_cb, \%data);
+	Gaim::signal_connect(Gaim::BuddyList::handle, "buddy-signed-off", $plugin, \&buddy_signed_off_cb, \%data);
 	
 	$thr = threads->new(\&gaim_webserver);
 	Gaim::timeout_add($plugin, 1, \&timeout_cb, "todo");
@@ -155,8 +157,8 @@ sub plugin_load {
 #
 sub buddy_signed_on_cb{
 	my ($buddy,$data) = @_;
-	$found = "0";
-	$name = Gaim::BuddyList::Buddy::get_name($buddy);
+	my $found = "0";
+	my $name = Gaim::BuddyList::Buddy::get_name($buddy);
 	
 	Gaim::debug_info($WEBGAIM,"buddy_signed_on_cb [$name]<==>[@buddies_online]\n");
 	
@@ -178,6 +180,7 @@ sub buddy_signed_on_cb{
 	}
 	
 	Gaim::debug_info($WEBGAIM,"buddy_signed_on_cb [$found]\n");
+	return undef;
 }
 
 #
@@ -200,6 +203,7 @@ sub buddy_signed_off_cb{
 		}
 	}
 	Gaim::debug_info($WEBGAIM,"buddy_signed_OFF_cb");
+	return undef;
 }
 
 #
@@ -207,13 +211,14 @@ sub buddy_signed_off_cb{
 #  list
 #
 sub received_msg_cb{
-	my ($gc, $sender,$msg,$flags,$data) = @_;
+	my ($gc, $sender,$msg,$flags) = @_;
 
 	Gaim::debug_info($WEBGAIM,"received_msg_cb:: $sender:$msg:$flags\n");
 	
-	{
-		add_chat_msg( $sender, $sender,$msg );
-	}
+	add_chat_msg( $sender, $sender,$msg );
+	
+	Gaim::debug_info($WEBGAIM,"received_msg_cb:: DONE\n");
+	return undef;
 }
 
 #
@@ -303,20 +308,25 @@ sub logout{
 sub send{
 	my $line = shift;
 	($to,$msg) = split(/=/,$line,2);
+	Gaim::debug_info($WEBGAIM,"ENTER send [$to]:[$msg]\n");
 	
-	@gaim_chats = Gaim::conversations();
-	while( @gaim_chats )
+	my @gaim_ims = Gaim::ims();
+	while( @gaim_ims )
 	{
-		$gaim_chat = shift( @gaim_chats );
-		$name = Gaim::Conversation::get_name( $gaim_chat );
+		my $gaim_im = shift( @gaim_ims );
+		my $name = Gaim::Conversation::get_name( Gaim::Conversation::IM::get_conversation( $gaim_im ) );
 		
 		if( $name eq "$to" )
 		{
-			Gaim::Conversation::write( $gaim_chat, NULL, $msg, "0" );
+			Gaim::Conversation::IM::send( $gaim_im, $msg  );
 			#Gaim::debug_info($WEBGAIM,"sent [$to]:[$msg]\n");
 		}
+		Gaim::debug_info($WEBGAIM,"sent [$to]:[$name]\n");
 	}
+	Gaim::debug_info($WEBGAIM,"EXIT: sent\n");
+	return undef;
 }
+
 
 #
 # Add a chat/im message from another user into our list of messages
@@ -366,7 +376,7 @@ sub start_chat_simple{
 	my $found = 0;
 
 		
-	@groups = Gaim::BuddyList::groups();
+	my @groups = Gaim::BuddyList::groups();
 	while( @groups )
 	{
 		$group = shift( @groups );
@@ -404,7 +414,7 @@ sub start_chat_simple{
 			{
 			
 				$new_account = $acc;
-				break;
+				#break;
 			}
 		}
 
@@ -422,6 +432,7 @@ sub start_chat_simple{
 			# HACK: This is my newbism to perl, but somehow if we do not use a has to store
 			#			the conversation object everytime we open a new conversation we kill the old one
 			#           If anyone knows a better way to do this please let me know :)
+			#$g_conv{$to} = Gaim::Conversation::IM::new( $new_account , $to );
 			$g_conv{$to} = Gaim::Conversation::IM::new( $new_account , $to );
 		}
 	}
@@ -454,25 +465,24 @@ sub update_buddy_list
 	lock( %buddies_all );
 	%buddies_all = ();
 	
-	@groups = Gaim::BuddyList::groups();
+	my @groups = Gaim::BuddyList::groups();
 	while( @groups )
 	{
-		$group = shift( @groups );
-		$group_name = Gaim::BuddyList::Group::get_name($group);
+		my $group = shift( @groups );
+		my $group_name = Gaim::BuddyList::Group::get_name($group);
 		
-		@buddies = Gaim::BuddyList::Group::buddies( $group );
+		my @buddies = Gaim::BuddyList::Group::buddies( $group );
 		while( @buddies )
 		{
-			$buddy = shift( @buddies );
-			$buddy_name = Gaim::BuddyList::Buddy::get_name($buddy);
-			$buddy_alias = Gaim::BuddyList::Buddy::get_alias($buddy);
-			$buddy_account = Gaim::BuddyList::Buddy::get_account($buddy);
-			$buddy_protocol = Gaim::Account::get_protocol_id($buddy_account);
+			my $buddy = shift( @buddies );
+			my $buddy_name = Gaim::BuddyList::Buddy::get_name($buddy);
+			my $buddy_alias = Gaim::BuddyList::Buddy::get_alias($buddy);
+			my $buddy_account = Gaim::BuddyList::Buddy::get_account($buddy);
+			my $buddy_protocol = Gaim::Account::get_protocol_id($buddy_account);
 			
 			$buddies_all{$buddy_name} = "$group_name:$buddy_alias:$buddy_protocol";
 		}
 	}
-#	Gaim::debug_info($WEBGAIM,"all:[@buddies_all]\n");
 }
 
 #
@@ -482,11 +492,12 @@ sub update_conversations
 {
 	lock( @g_chats );
 	@g_chats = ();
-	@gaim_chats = Gaim::conversations();
+	
+	my @gaim_chats = Gaim::conversations();
 	while( @gaim_chats )
 	{
-		$gaim_chat = shift( @gaim_chats );
-		$name = Gaim::Conversation::get_name( $gaim_chat );
+		my $gaim_chat = shift( @gaim_chats );
+		my $name = Gaim::Conversation::get_name( $gaim_chat );
 		push(@g_chats,$name );
 	}
 
@@ -529,7 +540,7 @@ sub clear_active_buddies
 	$logged_out_proto = Gaim::Account::get_protocol_id( $account );
 	
 	lock( @buddies_online );
-	@buddies_prev = @buddies_online;
+	my @buddies_prev = @buddies_online;
 	@buddies_online=();
 	
 	Gaim::debug_info($WEBGAIM,"++++++++++++++++++++++++++++++++++++++++\n");		
@@ -895,7 +906,7 @@ sub active_chats()
 
 	while( @chats_tmp )
 	{
-		$chat = shift( @chats_tmp );
+		my $chat = shift( @chats_tmp );
 		print NS "$chat<BR>\n";
 	}
 }
@@ -937,11 +948,11 @@ sub see_also()
 				{
 					lock(%g_chat_lines);
 					$new = $g_chat_lines{$name};
-					Gaim::debug_info($WEBGAIM,"see_also::$name::$new\n");
+					Gaim::debug_info($WEBGAIM,"see_also:: $name ::$new\n");
 				}
 				else
 				{
-					Gaim::debug_info($WEBGAIM,"see_also::$name::!exists\n");
+					Gaim::debug_info($WEBGAIM,"see_also:: $name ::!exists\n");
 				}
 				
 				
@@ -952,7 +963,7 @@ sub see_also()
 			}
 			else
 			{
-				Gaim::debug_info($WEBGAIM,"see_also::$name::!nochat\n");			
+				Gaim::debug_info($WEBGAIM,"see_also:: $name ::!nochat\n");			
 			}
 		}
 
