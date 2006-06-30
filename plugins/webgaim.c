@@ -1102,7 +1102,7 @@ static int action_history( webgaim_client_t * httpd, const char * extra )
     buddy = find_buddy( name );
 
 
-    snprintf(buffer,1024,"/history?%s",time_stamp());
+    snprintf(buffer,1024,"/history?%s%s",time_stamp(),extra);
     client_write_header( httpd,buffer);
 
 
