@@ -38,10 +38,16 @@ static char  *license = "\
  *   - http://localhost:8888/ should display the Root/Home page
  */
 
-#define WEBGAIM_VERSION "2.0-B13"
+#define WEBGAIM_VERSION "2.0-B14"
 
 /**
  * CHANGES:
+ *     2.0-B14
+ *       - Integrate Patch from David Morse
+ *         + Display status message (if set) next to buddies (David Morse)
+ *          + preference to enable/disable this in plugin details
+ *         + strip embedded HTML tags out of IMs
+ *         + linefeeds after every IM in action_chat()
  *     2.0-B13
  *       - Use Name defined in gaim instead of "Self"
  *       - Add Buddy & Account name bolding in conversation view
@@ -155,6 +161,7 @@ static char  *license = "\
 static unsigned uOptionTrim = 100; // trim after 100 messages
 static gboolean gOptionUseColor = 1;
 static gboolean gOptionBoldNames = 1;
+static gboolean gOptionStatusMessages = 1;
 
 typedef struct{
     const char * name;
@@ -535,6 +542,7 @@ static void client_write_header( webgaim_client_t * httpd, const char *update )
     client_write( httpd,"<html>\n");
     client_write( httpd," <head>\n");
     client_write( httpd,"  <meta http-equiv=\"Pragma\" content=\"no-cache\">\n");
+    client_write( httpd,"  <title>WebGaim</title>\n");
     client_write( httpd," </head>\n");
     client_write( httpd,"<body>\n");
 
@@ -656,6 +664,8 @@ static int action_root( webgaim_client_t * httpd, const char * notused )
                 {
                     char * name;
                     GaimBuddy *buddy = (GaimBuddy *)bnode;
+                    GaimStatus *status;
+                    const char *status_msg = NULL;
     
                     if ( ! GAIM_BUDDY_IS_ONLINE(buddy))
                         continue;
@@ -678,6 +688,19 @@ static int action_root( webgaim_client_t * httpd, const char * notused )
                     }
                     g_free(name);
                     client_write(httpd,buffer);
+
+                    /* Retrieve and display status message, if one exists */
+                    if (gOptionStatusMessages)
+                    {
+                        status = gaim_presence_get_active_status(buddy->presence);
+                        status_msg = gaim_value_get_string(gaim_status_get_attr_value(status, "message"));
+                        if ((status_msg != NULL) && (*status_msg != '\0')) {
+                            char *stripped_status_msg = gaim_markup_strip_html(status_msg);
+                            client_write(httpd," ");
+                            client_write(httpd,stripped_status_msg);
+                            g_free(stripped_status_msg);
+                        }
+                    }
 
                     /* Idle - lifted largely from gaim/src/gtkblist.c */
                     if (gaim_presence_is_idle(buddy->presence))
@@ -962,8 +985,8 @@ static int action_chat( webgaim_client_t * httpd, const char * extra )
 
             }
             client_write(httpd,": "); /// Add a space otherwise things blend in to much
-            client_write(httpd,conv->message);
-            client_write(httpd,"<BR>");
+            client_write(httpd,gaim_markup_strip_html(conv->message));
+            client_write(httpd,"<BR>\n");
         }
         chat->unseen=0;
 
@@ -1478,8 +1501,10 @@ static void httpd_restart(webgaim_data_t * webgaim)
     password = gaim_prefs_get_string("/plugins/webgaim/server_password");
     gOptionUseColor = gaim_prefs_get_bool("/plugins/webgaim/use_color");
     gOptionBoldNames = gaim_prefs_get_bool("/plugins/webgaim/use_bold_names");
+    gOptionStatusMessages = gaim_prefs_get_bool("/plugins/webgaim/use_status_messages");
     gaim_debug_info("WebGaim 2","Load::Color code set to [%d]\n",gOptionUseColor);
     gaim_debug_info("WebGaim 2","Load::Bold Names set to [%d]\n",gOptionBoldNames);
+    gaim_debug_info("WebGaim 2","Load::Status Messages set to [%d]\n",gOptionStatusMessages);
 
     if( (username != NULL) && (password != NULL) )
     {
@@ -1610,6 +1635,13 @@ static void type_toggle_cb(GtkWidget *widget, gpointer data)
         gaim_prefs_set_bool(pref, gOptionBoldNames);
         gaim_debug_info("WebGaim 2","Bold Set to [%d]\n",gOptionBoldNames);
     }
+    else if( strcmp(data,"use_status_messages") == 0  )
+    {
+        gOptionStatusMessages = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+        g_snprintf(pref, sizeof(pref), "/plugins/webgaim/%s", (char *)data);
+        gaim_prefs_set_bool(pref, gOptionStatusMessages);
+        gaim_debug_info("WebGaim 2","Status Messages Set to [%d]\n",gOptionStatusMessages);
+    }
 }
 
 
@@ -1700,6 +1732,12 @@ static GtkWidget * get_config_frame(GaimPlugin *plugin)
     g_signal_connect(G_OBJECT(toggle), "toggled",
                          G_CALLBACK(type_toggle_cb), "use_bold_names");
 
+    toggle = gtk_check_button_new_with_mnemonic(_("Buddy Status Messages"));
+    gtk_box_pack_start(GTK_BOX(vbox), toggle, FALSE, FALSE, 0);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(toggle),
+                                     gaim_prefs_get_bool("/plugins/webgaim/use_status_messages"));
+    g_signal_connect(G_OBJECT(toggle), "toggled",
+                         G_CALLBACK(type_toggle_cb), "use_status_messages");
 
     gtk_widget_show_all(ret);
     return ret;
@@ -1752,6 +1790,7 @@ static void init_plugin(GaimPlugin *plugin)
     gaim_prefs_add_string("/plugins/webgaim/server_password", "");
     gaim_prefs_add_bool("/plugins/webgaim/use_color", 1);
     gaim_prefs_add_bool("/plugins/webgaim/use_bold_names", 1);
+    gaim_prefs_add_bool("/plugins/webgaim/use_status_messages", 1);
 }
 
 GAIM_INIT_PLUGIN(WebGaim, init_plugin, info)
