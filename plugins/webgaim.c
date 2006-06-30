@@ -42,6 +42,15 @@ static char  *license = "\
 
 /**
  * CHANGES:
+ *     TODO:
+ *       - Colorize History Display
+ *       - Add History Searching using regex?
+ *       - Move Login/Account management to new screen
+ *       - Add option for frames ( Buddy List in Frame ) 
+ *       - Make options screen actually DO something like allow you to set options
+ *
+ *     2.0-XXX
+ *       - Added Basic History Code
  *     2.0-B14
  *       - Integrate Patch from David Morse
  *         + Display status message (if set) next to buddies (David Morse)
