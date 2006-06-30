@@ -984,7 +984,7 @@ static int action_chat( webgaim_client_t * httpd, const char * extra )
                     client_write(httpd,"</FONT>");
 
             }
-            client_write(httpd,": "); /// Add a space otherwise things blend in to much
+            client_write(httpd,":&nbsp;"); /// Add a space otherwise things blend in to much
             client_write(httpd,gaim_markup_strip_html(conv->message));
             client_write(httpd,"<BR>\n");
         }
@@ -992,6 +992,9 @@ static int action_chat( webgaim_client_t * httpd, const char * extra )
 
         chat_trim( chat );
     }
+
+    snprintf(buffer,1024,"(<A HREF=/history?%s%s>history</A>)",time_stamp(),extra);
+    client_write( httpd,buffer);
     client_write_tail( httpd );
     return 1;
 }
@@ -1067,6 +1070,8 @@ static int action_about( webgaim_client_t * httpd, const char * extra )
     gaim_debug_info("WebGaim 2","%s\n",__FUNCTION__);
     client_write_header( httpd,"/About" );
     client_write(httpd,"<FONT size=+1>CopyRight (C) 2006 Sebastian Sobolewski</FONT><BR>\n");
+    client_write(httpd,"<FONT size=+1>Additional Contributors:</FONT><BR>\n");
+    client_write(httpd,"<FONT size=+1>David Morse</FONT><BR>\n");
     client_write(httpd,"<FONT size=+1>Version");
     client_write(httpd,WEBGAIM_VERSION);
     client_write(httpd,"</FONT><BR>\n");
@@ -1074,6 +1079,67 @@ static int action_about( webgaim_client_t * httpd, const char * extra )
     client_write(httpd,"<PRE>");
     client_write(httpd,license);
     client_write(httpd,"</PRE>");
+    client_write_tail( httpd );
+    return 1;
+}
+
+static int action_history( webgaim_client_t * httpd, const char * extra )
+{
+    char buffer[1024];
+    GaimBuddy *buddy = NULL;
+    char * name;
+
+    name = webgaim_normalize( extra );
+    buddy = find_buddy( name );
+
+
+    snprintf(buffer,1024,"/history?%s",time_stamp());
+    client_write_header( httpd,buffer);
+
+
+    if( buddy && buddy->account )
+    {
+        GList *logs = gaim_log_get_logs(GAIM_LOG_IM, name, buddy->account );
+
+        if( logs ) 
+        {
+            logs = g_list_concat( logs,  gaim_log_get_logs(GAIM_LOG_CHAT, name, buddy->account ) );
+        }
+        else
+        {
+            logs = gaim_log_get_logs(GAIM_LOG_CHAT, name, buddy->account );
+        }
+        
+        if( logs )
+        {
+            GList *log;
+            for (log = logs; log != NULL; log = log->next) 
+            {
+                GaimLog * gaimLog = log->data;
+
+                char *data = gaim_log_read(gaimLog, NULL);
+                if( data )
+                {
+                    gaim_strftime(buffer, 1024,"%c" , localtime(&gaimLog->time) );
+                    client_write(httpd, buffer);
+                    client_write(httpd,"<PRE>\n");
+                    client_write(httpd,data);
+                    client_write(httpd,"</PRE>\n");
+                    client_write(httpd,"<BR>");
+                    g_free(data);
+                }
+            }
+
+        }
+        else
+        {
+            client_write(httpd,"<BR>No History Available<</BR>\n");
+        }
+    }
+    else
+    {
+        client_write(httpd,"<BR>No History Available<</BR>\n");
+    }
     client_write_tail( httpd );
     return 1;
 }
@@ -1090,7 +1156,8 @@ static webgaim_parse_t webgaim_actions[] = {
     { "/chat",action_chat },
     { "/send",action_send },
     { "/options",action_root },
-    { "/About",action_about }
+    { "/About",action_about },
+    { "/history",action_history }
 };
 ///****************************************************************************************************///
 ///  WEBSERVER CODE:  The code below deals with the webserver micro engine
