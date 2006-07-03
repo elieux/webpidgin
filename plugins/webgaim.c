@@ -45,12 +45,12 @@ static char  *license = "\
  *     TODO:
  *       - Colorize History Display
  *       - Add History Searching using regex?
- *       - Move Login/Account management to new screen
- *       - Add option for frames ( Buddy List in Frame ) 
  *       - Make options screen actually DO something like allow you to set options
  *
  *     2.0-XXX
  *       - Added Basic History Code
+ *       - Added Option for frames ( Active Buddy List In Frames )
+ *       - Moved Login/Account management to new screen
  *     2.0-B14
  *       - Integrate Patch from David Morse
  *         + Display status message (if set) next to buddies (David Morse)
@@ -171,6 +171,7 @@ static unsigned uOptionTrim = 100; // trim after 100 messages
 static gboolean gOptionUseColor = 1;
 static gboolean gOptionBoldNames = 1;
 static gboolean gOptionStatusMessages = 1;
+static gboolean gOptionWWWFrames = 0;
 
 typedef struct{
     const char * name;
@@ -538,9 +539,8 @@ static void client_write_date(webgaim_client_t * httpd)
 /**
  * @brief Write a HTTPD header and additional WebGaim "toolbar" to the client stream
  */
-static void client_write_header( webgaim_client_t * httpd, const char *update )
+static void client_write_http_header( webgaim_client_t * httpd )
 {
-    char buffer[4096]; 
     client_write( httpd,"");
     client_write( httpd,"HTTP/1.1 200 OK\n");
     client_write_date(httpd);
@@ -548,6 +548,12 @@ static void client_write_header( webgaim_client_t * httpd, const char *update )
     client_write( httpd,"Connection: close\n");
     client_write( httpd,"Content-type: text/html\n\n");
     client_write( httpd,"<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">\n");
+}
+
+static void client_write_header( webgaim_client_t * httpd, const char *update )
+{
+    char buffer[4096]; 
+    client_write_http_header( httpd );
     client_write( httpd,"<html>\n");
     client_write( httpd," <head>\n");
     client_write( httpd,"  <meta http-equiv=\"Pragma\" content=\"no-cache\">\n");
@@ -555,7 +561,28 @@ static void client_write_header( webgaim_client_t * httpd, const char *update )
     client_write( httpd," </head>\n");
     client_write( httpd,"<body>\n");
 
-    snprintf(buffer,4096,"CMD: <A HREF=%s>U</A> : <A HREF=/>H</A> : <A HREF=/BuddyList>B</A> : <A HREF=/Options>O</A> : <A HREF=/About>A</A><HR>\n",update);
+    //
+    //  If we Are In Frames We Behave Differently!!
+    //
+    if( gOptionWWWFrames )
+    {
+        if( ( strcmp(update,"/") == 0 ) || ( strcmp(update,"/ActiveList") == 0 ) )
+        {
+            snprintf(buffer,4096,"CMD: <A HREF=%s target=\"list\">U</A> | <A HREF=/Accounts target=\"conv\">A</A> | <A HREF=/Options target=\"conv\">O</A> | <A HREF=/About target=\"conv\">?</A><HR>\n",update);
+        }
+        else
+        {
+            snprintf(buffer,4096,"CMD: <A HREF=%s target=\"conv\">Update</A><HR> \n",update);
+        }
+    }
+    else
+    {
+        //
+        // Not framesd use the "Normal Way"
+        //
+        snprintf(buffer,4096,"CMD: <A HREF=%s>U</A> | <A HREF=/>H</A> | <A HREF=/Accounts>A</A> | <A HREF=/Options>O</A> | <A HREF=/About>?</A><HR>\n",update);
+    }
+
     client_write( httpd,buffer);
 }
 
@@ -576,8 +603,17 @@ static void client_write_tail( webgaim_client_t * httpd )
 static void show_active_chats( webgaim_client_t * httpd, const char * except )
 {
     char buffer[4096];
+    char extra_html[512];
     unsigned count = 0;
     GaimBlistNode *gnode, *cnode, *bnode;
+
+    strcpy(extra_html, "");
+    if( gOptionWWWFrames )
+    {
+        strncat(extra_html," target=\"conv\" ",511-strlen(extra_html));
+    }
+
+
     for (gnode = gaim_get_blist()->root; gnode != NULL; gnode = gnode->next)
     {
         if (!GAIM_BLIST_NODE_IS_GROUP(gnode))
@@ -618,15 +654,15 @@ static void show_active_chats( webgaim_client_t * httpd, const char * except )
                 if( buddy->alias )
                 {
                     
-                    snprintf(buffer,4096,"&nbsp;(%d)&nbsp; <A HREF=chat?%s%s accesskey=\"%d\"> %s</A> [%d]<BR>\n",unread,time_stamp(),name,count,buddy->alias,count);
+                    snprintf(buffer,4096,"&nbsp;(%d)&nbsp; <A HREF=chat?%s%s accesskey=\"%d\" %s> %s</A> [%d]<BR>\n",unread,time_stamp(),name,count,extra_html,buddy->alias,count);
                 }
                 else if( buddy->server_alias )
                 {
-                    snprintf(buffer,4096,"&nbsp;(%d)&nbsp; <A HREF=chat?%s%s accesskey=\"%d\"> %s</A> [%d]<BR>\n", unread,time_stamp(),name,count,buddy->server_alias,count);
+                    snprintf(buffer,4096,"&nbsp;(%d)&nbsp; <A HREF=chat?%s%s accesskey=\"%d\" %s> %s</A> [%d]<BR>\n", unread,time_stamp(),name,count,extra_html,buddy->server_alias,count);
                 }
                 else
                 {
-                    snprintf(buffer,4096,"&nbsp;(%d)&nbsp;<A HREF=chat?%s%s accesskey=\"%d\"> %s</A> [%d]<BR>\n",unread,time_stamp(),name,count,buddy->name,count);
+                    snprintf(buffer,4096,"&nbsp;(%d)&nbsp;<A HREF=chat?%s%s accesskey=\"%d\" %s> %s</A> [%d]<BR>\n",unread,time_stamp(),name,count,extra_html,buddy->name,count);
                 }
                 g_free( name );
                 client_write(httpd,buffer);
@@ -636,20 +672,22 @@ static void show_active_chats( webgaim_client_t * httpd, const char * except )
     }
 }
 
-/**
- * @brief Display the / ( Home ) page of WebGaim.
- * @brief this mainly displays account status, online and active buddies
- */
-static int action_root( webgaim_client_t * httpd, const char * notused )
-{
-    int accountCount = 0;
-    GList *account_iter = NULL;
-    char buffer[4096]; // yuck buffer overflow waiting to happen!!
-    gaim_debug_info("WebGaim 2","%s\n",__FUNCTION__);
-    client_write_header( httpd,"/" );
 
+static int action_active_list( webgaim_client_t * httpd, const char * notused )
+{
+    char buffer[4096]; // yuck buffer overflow waiting to happen!!
+    char extra_html[512];
+    gaim_debug_info("WebGaim 2","%s\n",__FUNCTION__);
+
+    client_write_header( httpd,"/ActiveList" );
 
     show_active_chats( httpd , NULL);
+
+    strcpy(extra_html,"");
+    if( gOptionWWWFrames )
+    {
+        strncat(extra_html," target=\"conv\" ", 511-strlen(extra_html));
+    }
 
     client_write( httpd,"Online:<BR>");        
 
@@ -685,15 +723,15 @@ static int action_root( webgaim_client_t * httpd, const char * notused )
 
                     if( buddy->alias )
                     {
-                        snprintf(buffer,4096,"&nbsp;&nbsp; <A HREF=chat?%s%s> %s</A>",time_stamp(),name,buddy->alias);
+                        snprintf(buffer,4096,"&nbsp;&nbsp; <A HREF=chat?%s%s %s> %s</A>",time_stamp(),name,extra_html,buddy->alias);
                     }
                     else if( buddy->server_alias )
                     {
-                        snprintf(buffer,4096,"&nbsp;&nbsp; <A HREF=chat?%s%s> %s</A>",time_stamp(),name,buddy->server_alias);
+                        snprintf(buffer,4096,"&nbsp;&nbsp; <A HREF=chat?%s%s %s> %s</A>",time_stamp(),name,extra_html,buddy->server_alias);
                     }
                     else
                     {
-                        snprintf(buffer,4096,"&nbsp;&nbsp;<A HREF=chat?%s%s> %s</A>",time_stamp(),name,buddy->name);
+                        snprintf(buffer,4096,"&nbsp;&nbsp;<A HREF=chat?%s%s %s> %s</A>",time_stamp(),name,extra_html,buddy->name);
                     }
                     g_free(name);
                     client_write(httpd,buffer);
@@ -743,6 +781,24 @@ static int action_root( webgaim_client_t * httpd, const char * notused )
         }
     }
 
+    client_write_tail( httpd );
+    return 1;
+}
+
+static int action_options( webgaim_client_t * httpd, const char * notused )
+{
+    client_write_header( httpd,"/Options" );
+    client_write(httpd,"Options go in here");
+    client_write_tail( httpd );
+    return 1;
+}
+
+static int action_accounts( webgaim_client_t * httpd, const char * notused )
+{
+    int accountCount = 0;
+    char buffer[4096]; // yuck buffer overflow waiting to happen!!
+    GList *account_iter = NULL;
+    client_write_header( httpd,"/Accounts" );
     client_write(httpd,"Accounts:<BR>\n");
 
     for (account_iter = gaim_accounts_get_all() ; account_iter != NULL ; account_iter = account_iter->next) 
@@ -775,11 +831,37 @@ static int action_root( webgaim_client_t * httpd, const char * notused )
             client_write( httpd,buffer);
         }
         g_free(encoded_user);
-        
     }
-    client_write( httpd,"<BR>");        
-    client_write(httpd,"CMD: <A HREF=/>U</A> : \n");
+
     client_write_tail( httpd );
+    return 1;
+}
+
+
+/**
+ * @brief Display the / ( Home ) page of WebGaim.
+ * @brief this mainly displays account status, online and active buddies
+ */
+static int action_root( webgaim_client_t * httpd, const char * notused )
+{
+    if( gOptionWWWFrames )
+    {
+        client_write_http_header( httpd );
+        client_write( httpd,"<html>\n");
+        client_write( httpd," <head>\n");
+        client_write( httpd,"  <title>WebGaim</title>\n");
+        client_write(httpd,"   <FRAMESET COLS=\"150, *\" BORDER=0 ID=fs1>");
+        client_write(httpd,"    <FRAME SRC=\"/ActiveList\" NORESIZE NAME=\"list\">");
+        client_write(httpd,"    <FRAME SRC=\"/About\" NORESIZE NAME=\"conv\">");
+        client_write(httpd,"   </FRAMESET>");
+        client_write( httpd," </head>\n");
+        client_write( httpd,"</html>\n");
+        client_write( httpd,"\n\n");
+    }
+    else
+    {
+        return action_active_list( httpd,  notused );
+    }
     return 1;
 }
 
@@ -790,6 +872,14 @@ static int action_buddy_list( webgaim_client_t * httpd, const char * notused )
 {
     char buffer[4096];
     GaimBlistNode *gnode, *cnode, *bnode;
+    char extra_html[512];
+
+    strcpy(extra_html,"");
+    if( gOptionWWWFrames )
+    {
+        strncat(extra_html," target=\"conv\" ", 511-strlen(extra_html));
+    }
+
     client_write_header(httpd,"/BuddyList");
     gaim_debug_info("WebGaim 2","%s\n",__FUNCTION__);
     for (gnode = gaim_get_blist()->root; gnode != NULL; gnode = gnode->next)
@@ -816,15 +906,15 @@ static int action_buddy_list( webgaim_client_t * httpd, const char * notused )
                 name = webgaim_encode( buddy->name );
                 if( buddy->alias )
                 {
-                    snprintf(buffer,4096,"&nbsp;&nbsp; <A HREF=chat?%s%s> %s</A><BR>\n",time_stamp(),name,buddy->alias);
+                    snprintf(buffer,4096,"&nbsp;&nbsp; <A HREF=chat?%s%s %s> %s</A><BR>\n",time_stamp(),name,extra_html,buddy->alias);
                 }
                 else if( buddy->server_alias )
                 {
-                    snprintf(buffer,4096,"&nbsp;&nbsp; <A HREF=chat?%s%s> %s</A><BR>\n",time_stamp(),name,buddy->server_alias);
+                    snprintf(buffer,4096,"&nbsp;&nbsp; <A HREF=chat?%s%s %s> %s</A><BR>\n",time_stamp(),name,extra_html,buddy->server_alias);
                 }
                 else
                 {
-                    snprintf(buffer,4096,"&nbsp;&nbsp;<A HREF=chat?%s%s> %s</A><BR>\n",time_stamp(),name,buddy->name);
+                    snprintf(buffer,4096,"&nbsp;&nbsp;<A HREF=chat?%s%s %s> %s</A><BR>\n",time_stamp(),name,extra_html,buddy->name);
                 }
                 g_free(name);
                 client_write(httpd,buffer);
@@ -1159,12 +1249,14 @@ static int action_history( webgaim_client_t * httpd, const char * extra )
  */
 static webgaim_parse_t webgaim_actions[] = {
     { "/", action_root },
+    { "/ActiveList", action_active_list },
     { "/BuddyList", action_buddy_list },
     { "/login",action_login },
     { "/logout",action_logout },
     { "/chat",action_chat },
     { "/send",action_send },
-    { "/options",action_root },
+    { "/Accounts",action_accounts },
+    { "/Options",action_options },
     { "/About",action_about },
     { "/history",action_history }
 };
@@ -1577,6 +1669,7 @@ static void httpd_restart(webgaim_data_t * webgaim)
     password = gaim_prefs_get_string("/plugins/webgaim/server_password");
     gOptionUseColor = gaim_prefs_get_bool("/plugins/webgaim/use_color");
     gOptionBoldNames = gaim_prefs_get_bool("/plugins/webgaim/use_bold_names");
+    gOptionWWWFrames = gaim_prefs_get_bool("/plugins/webgaim/use_www_frames");
     gOptionStatusMessages = gaim_prefs_get_bool("/plugins/webgaim/use_status_messages");
     gaim_debug_info("WebGaim 2","Load::Color code set to [%d]\n",gOptionUseColor);
     gaim_debug_info("WebGaim 2","Load::Bold Names set to [%d]\n",gOptionBoldNames);
@@ -1718,10 +1811,15 @@ static void type_toggle_cb(GtkWidget *widget, gpointer data)
         gaim_prefs_set_bool(pref, gOptionStatusMessages);
         gaim_debug_info("WebGaim 2","Status Messages Set to [%d]\n",gOptionStatusMessages);
     }
+    else if( strcmp(data,"use_www_frames") == 0  )
+    {
+        gOptionWWWFrames = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+        g_snprintf(pref, sizeof(pref), "/plugins/webgaim/%s", (char *)data);
+        gaim_prefs_set_bool(pref, gOptionWWWFrames);
+        gaim_debug_info("WebGaim 2","Frames Set to [%d]\n",gOptionWWWFrames);
+    }
+
 }
-
-
-
 
 static gboolean options_entry_cb(GtkWidget *widget, GdkEventFocus *evt, gpointer data)
 {
@@ -1800,6 +1898,13 @@ static GtkWidget * get_config_frame(GaimPlugin *plugin)
     g_signal_connect(G_OBJECT(toggle), "toggled",
                          G_CALLBACK(type_toggle_cb), "use_color");
 
+    toggle = gtk_check_button_new_with_mnemonic(_("Enable Frames"));
+    gtk_box_pack_start(GTK_BOX(vbox), toggle, FALSE, FALSE, 0);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(toggle),
+                                     gaim_prefs_get_bool("/plugins/webgaim/use_www_frames"));
+    g_signal_connect(G_OBJECT(toggle), "toggled",
+                         G_CALLBACK(type_toggle_cb), "use_www_frames");
+
 
     toggle = gtk_check_button_new_with_mnemonic(_("Bold Buddy Names"));
     gtk_box_pack_start(GTK_BOX(vbox), toggle, FALSE, FALSE, 0);
@@ -1867,6 +1972,7 @@ static void init_plugin(GaimPlugin *plugin)
     gaim_prefs_add_bool("/plugins/webgaim/use_color", 1);
     gaim_prefs_add_bool("/plugins/webgaim/use_bold_names", 1);
     gaim_prefs_add_bool("/plugins/webgaim/use_status_messages", 1);
+    gaim_prefs_add_bool("/plugins/webgaim/use_www_frames", 0);
 }
 
 GAIM_INIT_PLUGIN(WebGaim, init_plugin, info)
