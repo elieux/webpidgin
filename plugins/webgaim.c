@@ -5,7 +5,7 @@
  * @brief gaim using a simple web browser such as those found in 
  * @brief mobile phones and other minimal WAP devices.  
  *
- * @copyright (C) 2004 Sebastian Sobolewski ( spsobole@thirdmartini.com )
+ * @copyright (C) 2006 Sebastian Sobolewski ( spsobole@thirdmartini.com )
  * @url http://www.thirdmartini.com/index.php/WebGaim_2.x
  *
  ********************************************************************** */
@@ -53,7 +53,7 @@ static char  *license = "\
  *       - Options can be manipulated from the options screen
  *     2.0-B14
  *       - Integrate Patch from David Morse
- *         + Display status message (if set) next to buddies (David Morse)
+ *         + Display status message (if set) next to buddies
  *          + preference to enable/disable this in plugin details
  *         + strip embedded HTML tags out of IMs
  *         + linefeeds after every IM in action_chat()
@@ -85,11 +85,12 @@ static char  *license = "\
  *   - Konqueror
  *   - Samsung i500 ( Handspring Blazer Browser )
  *   - Sony PSP
+ *   - WAP 2.0 (Sanyo RL-4920, others)
  *   - Any others?
  *
  * Things That DO work:
  *   - display Buddies with active messages ontop of chat view
- *   - login in and out of accounts ( accounts must be already enabled )
+ *   - login and out of accounts ( accounts must be already enabled )
  *   - IM conversations
  *   - continuing a IM conversation started using gaim
  *   - staring a new IM conversation using the webgaim
@@ -317,7 +318,7 @@ static webgaim_chat_t * chat_add( const char * buddy, int whom, const char * dat
     webgaim_chat_t *chat = NULL;
     webgaim_conv_t * conv = NULL;
     
-    /// We can lookup the sender and see whoit was
+    /// We can lookup the sender and see who it was
     chat = chat_find( buddy );
     if( ! chat )
     {
@@ -415,7 +416,7 @@ static GaimBuddy * find_buddy( char *name )
 
 static const char *self = "Self";
 /**
- * @brief retreive the name that should appear on the UI bassed on the
+ * @brief retreive the name that should appear on the UI based on the
  * @brief buddy.
  */
 static const char * get_self_name( char * buddy )
@@ -612,7 +613,7 @@ static void client_write_header( webgaim_client_t * httpd, const char *update )
     else
     {
         //
-        // Not framesd use the "Normal Way"
+        // Not framed; use the "Normal Way"
         //
         snprintf(buffer,4096,"CMD: <A HREF=%s>U</A> | <A HREF=/>H</A> | <A HREF=/Accounts>A</A> | <A HREF=/Options>O</A> | <A HREF=/About>?</A><HR>\n",update);
     }
@@ -864,8 +865,8 @@ static int action_options( webgaim_client_t * httpd, const char * extra )
     client_write(httpd,"<div>\n");
 
     ///
-    /// Don't let people chane their username password
-    /// over the www
+    /// Don't let people change their username and password
+    /// over the web
     ///
     client_write(httpd,"&nbsp;&nbsp;Username: N/A<BR>\n");
     client_write(httpd,"&nbsp;&nbsp;Password: N/A<BR>\n");
@@ -1073,7 +1074,7 @@ static int action_login( webgaim_client_t * httpd, const char * extra )
     {    
         char buffer[1024];
         gaim_account_connect( account );
-        snprintf(buffer,1024,"Loging into %s",extra);
+        snprintf(buffer,1024,"Logging into %s",extra);
         client_write(httpd,buffer);
     }
     client_write_tail( httpd );
@@ -1106,7 +1107,7 @@ static int action_logout( webgaim_client_t * httpd, const char * extra )
 
 /**
  * @brief handle a click on a buddy, which opens the "chat" view
- * @brief then handle any new message updates,etc
+ * @brief then handle any new message updates, etc.
  */
 static int action_chat( webgaim_client_t * httpd, const char * extra )
 {
@@ -1123,7 +1124,7 @@ static int action_chat( webgaim_client_t * httpd, const char * extra )
     snprintf(buffer,1024,"/chat?%s%s",time_stamp(),extra);
     client_write_header( httpd,buffer);
 
-    /// Now our webform for the chat
+    /// Now our web form for the chat
     client_write(httpd,"<form method=\"get\" action=\"/send?\">\n");
     client_write(httpd,"<div>\n");
     snprintf(buffer,1024,"<input style=\"-wap-input-format: *m\" name=\"%s\" size=64/>\n",name);
@@ -1133,7 +1134,7 @@ static int action_chat( webgaim_client_t * httpd, const char * extra )
     client_write(httpd,"</form>\n");
 
 
-    /// Show any active chats from other users. IE we're talking to bob, but in the meatime sally IM-ed us
+    /// Show any active chats from other users. IE we're talking to bob, but in the meantime sally IM-ed us
     /// show sally has an unread message for us. ( Just like the Active: buddies section on the root page )
     show_active_chats( httpd, name );
     g_free( name );
@@ -1185,7 +1186,7 @@ static int action_chat( webgaim_client_t * httpd, const char * extra )
                     client_write(httpd,"</FONT>");
 
             }
-            client_write(httpd,":&nbsp;"); /// Add a space otherwise things blend in to much
+            client_write(httpd,":&nbsp;"); /// Add a space, otherwise things blend in to much
             client_write(httpd,gaim_markup_strip_html(conv->message));
             client_write(httpd,"<BR>\n");
         }
@@ -1270,13 +1271,13 @@ static int action_about( webgaim_client_t * httpd, const char * extra )
 {
     gaim_debug_info("WebGaim 2","%s\n",__FUNCTION__);
     client_write_header( httpd,"/About" );
-    client_write(httpd,"<FONT size=+1>CopyRight (C) 2006 Sebastian Sobolewski</FONT><BR>\n");
-    client_write(httpd,"<FONT size=+1>Additional Contributors:</FONT><BR>\n");
-    client_write(httpd,"<FONT size=+1>David Morse</FONT><BR>\n");
-    client_write(httpd,"<FONT size=+1>Version");
+    client_write(httpd,"<FONT size=+1>Copyright (C) 2006 Sebastian Sobolewski<BR>\n");
+    client_write(httpd,"Additional Contributors:<BR>\n");
+    client_write(httpd,"David Morse<BR>\n");
+    client_write(httpd,"Version ");
     client_write(httpd,WEBGAIM_VERSION);
     client_write(httpd,"</FONT><BR>\n");
-    client_write(httpd,"<A HREF=http://www.thirdmartini.com/index.php/WebGaim_2.x>WebGaim 2.x</A><HR>\n");
+    client_write(httpd,"<A HREF=http://www.thirdmartini.com/index.php/WebGaim_2.x>WebGaim Home Page</A><HR>\n");
     client_write(httpd,"<PRE>");
     client_write(httpd,license);
     client_write(httpd,"</PRE>");
@@ -1367,12 +1368,12 @@ static int action_history( webgaim_client_t * httpd, const char * extra )
         }
         else
         {
-            client_write(httpd,"<BR>No History Available<</BR>\n");
+            client_write(httpd,"<BR>No History Available</BR>\n");
         }
     }
     else
     {
-        client_write(httpd,"<BR>No History Available<</BR>\n");
+        client_write(httpd,"<BR>No History Available</BR>\n");
     }
     client_write_tail( httpd );
     return 1;
@@ -1577,13 +1578,13 @@ static int client_parse_and_dispatch(webgaim_client_t *httpd, char * buffer, con
         if( strcmp(httpd->webgaim->auth,auth) != 0 )
         {
             free( temp );
-            /// wrong auth deny
+            /// wrong auth; deny
             return client_auth_reject(httpd);
         }
         free( temp );
     }
     
-    /// FInd the GET rquest line, we don't support anything else
+    /// Find the GET rquest line (we don't support anything else)
     purl = strstr(buffer,"GET ");
     if( purl )
     {
@@ -1664,7 +1665,7 @@ static void client_request_cb(gpointer data, gint sock, GaimInputCondition cond)
         return;
     }
 
-    /// Read the request here, always read less then our buffer
+    /// Read the request here, always read less than our buffer
     /// The client side should never send us more then 4K of data, that would be silly
     len = read( httpd->fd, buffer,4095 );
     if( len < 0 )
@@ -1672,7 +1673,7 @@ static void client_request_cb(gpointer data, gint sock, GaimInputCondition cond)
 
     if( len == 4095 )
     {
-        /// if we got too much data abort that should not happen
+        /// if we got too much data, abort (that should not happen)
         gaim_debug_info("WebGaim 2","http_request_cb yuck bad corruption\n");
         close( httpd->fd );
         g_free(httpd);
@@ -1705,8 +1706,7 @@ static void client_request_cb(gpointer data, gint sock, GaimInputCondition cond)
     }
 
     /// Always close the endpoint for now
-    /// we may want to leave the socket open for more stuf
-    /// later
+    /// we may want to leave the socket open for more stuff later
     gaim_input_remove(httpd->watcher );
     close( httpd->fd );
     g_free(httpd);
@@ -1762,7 +1762,7 @@ static void webgaim_listen_cb(int fd, gpointer data )
 }
 
 /**
- * @brief callback wehn a gaim IM message was received
+ * @brief callback when a gaim IM message was received
  */
 static void received_im_msg_cb(GaimAccount *account, char *sender, char *buffer,
                                    GaimConversation *conv, int flags, void *data)
@@ -1865,7 +1865,7 @@ static void httpd_restart(webgaim_data_t * webgaim)
     }
     else
     {
-        gaim_debug(GAIM_DEBUG_INFO, "WebGaim 2", "Load::Port change  not required\n");
+        gaim_debug(GAIM_DEBUG_INFO, "WebGaim 2", "Load::Port change not required\n");
     }
 
 }
@@ -2057,11 +2057,11 @@ static GaimPluginInfo info =
     N_("WebGaim"),                                    /**< name           */
     N_(WEBGAIM_VERSION),                              /**< version        */
                                                       /**  summary        */
-    N_("Gaim access over http"),
+    N_("Gaim access over HTTP"),
                                                       /**  description    */
-    N_("Allows access to all gaim features over a simple http interface such as those used in mobile phones."),
+    N_("Allows access to all Gaim features over a simple http interface such as those used in mobile phones."),
     "Sebastian Sobolewski <spsobole@yahoo.com>",        /**< author         */
-    N_("http://www.thirdmartini.com"),                /**< homepage       */
+    N_("http://www.thirdmartini.com/index.php/WebGaim_2.x"), /**< homepage       */
 
     plugin_load,                                      /**< load           */
     plugin_unload,                                    /**< unload         */
