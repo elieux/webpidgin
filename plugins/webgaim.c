@@ -1321,7 +1321,7 @@ static int action_history( webgaim_client_t * httpd, const char * extra )
                 char *data = gaim_log_read(gaimLog, NULL);
                 if( data )
                 {
-                    gaim_strftime(buffer, 1024,"%c" , localtime(&gaimLog->time) );
+                    strftime(buffer, 1024,"%c" , localtime(&gaimLog->time) );
                     client_write(httpd, buffer);
                     client_write(httpd,"<PRE>\n");
                     client_write(httpd,data);
