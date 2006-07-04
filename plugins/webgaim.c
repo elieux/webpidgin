@@ -166,12 +166,6 @@ static char  *license = "\
 #endif
 
 
-static void webgaim_save_pref_bool( const char * pref, unsigned enabled );
-static void webgaim_load_pref();
-
-
-
-
 /// Hardcode the port # for now
 const char * gOptionUsername = NULL;
 const char * gOptionPassword = NULL;
@@ -248,6 +242,21 @@ typedef struct webgaim_chat_s webgaim_chat_t;
 
 static const char *empty_string ="";
 static webgaim_chat_t head = { NULL,NULL,0,NULL };
+
+/// Prototypes of functions, so they can be called before they're defined
+static void webgaim_save_pref_bool( const char * pref, unsigned enabled );
+static void webgaim_load_pref();
+static int action_active_list( webgaim_client_t * httpd, const char * notused );
+static int action_options( webgaim_client_t * httpd, const char * extra );
+static int action_accounts( webgaim_client_t * httpd, const char * notused );
+static int action_root( webgaim_client_t * httpd, const char * notused );
+static int action_buddy_list( webgaim_client_t * httpd, const char * notused );
+static int action_login( webgaim_client_t * httpd, const char * extra );
+static int action_logout( webgaim_client_t * httpd, const char * extra );
+static int action_chat( webgaim_client_t * httpd, const char * extra );
+static int action_send( webgaim_client_t * httpd, const char * extra );
+static int action_about( webgaim_client_t * httpd, const char * extra );
+static int action_history( webgaim_client_t * httpd, const char * extra );
 
 /**
  * @brief load all webgaim prefs
@@ -840,8 +849,6 @@ static unsigned webgaim_get_param_bool( const char *data, const char * param )
 static int action_options( webgaim_client_t * httpd, const char * extra )
 {
     char buffer[1024];
-    client_write_header( httpd,"/Options" );
-
 
     if( extra != NULL && (strlen(extra) > 0 ) )
     {
@@ -858,10 +865,12 @@ static int action_options( webgaim_client_t * httpd, const char * extra )
         webgaim_save_pref_bool( "use_status_messages",webgaim_get_param_bool( extra,"use_status_messages") );
         webgaim_save_pref_bool( "use_www_frames",     webgaim_get_param_bool( extra,"use_www_frames") );
         webgaim_load_pref();
+        return action_root(httpd,NULL); // return to root page after preferences saved & reloaded
     }
 
+    client_write_header( httpd,"/Options" );
     client_write(httpd,"<B>Webgaim Options:</B><BR>\n");
-    client_write(httpd,"<form method=\"get\" action=\"/Options?\">\n");
+    client_write(httpd,"<form method=\"get\" target=\"_top\" action=\"/Options?\">\n");
     client_write(httpd,"<div>\n");
 
     ///
@@ -886,7 +895,7 @@ static int action_options( webgaim_client_t * httpd, const char * extra )
 
 
     client_write(httpd,"<BR>\n");
-    client_write(httpd,"&nbsp;&nbsp;<input type=\"submit\" value=\"Save\"/>\n");
+    client_write(httpd,"&nbsp;&nbsp;<input type=submit name=submit value=Save>\n");
     client_write(httpd,"</div>\n");
     client_write(httpd,"</form>\n");
 
@@ -953,10 +962,12 @@ static int action_root( webgaim_client_t * httpd, const char * notused )
         client_write( httpd,"<html>\n");
         client_write( httpd," <head>\n");
         client_write( httpd,"  <title>WebGaim</title>\n");
-        client_write(httpd,"   <FRAMESET COLS=\"150, *\" BORDER=0 ID=fs1>");
-        client_write(httpd,"    <FRAME SRC=\"/ActiveList\" NORESIZE NAME=\"list\">");
-        client_write(httpd,"    <FRAME SRC=\"/About\" NORESIZE NAME=\"conv\">");
-        client_write(httpd,"   </FRAMESET>");
+        client_write( httpd,"  <noframes><body>Your browser can not handle frames.<BR>\n");
+        client_write( httpd,"  Please <A HREF=/Options>click here</A> and uncheck Enable Frames</body></noframes>\n");
+        client_write( httpd,"   <FRAMESET COLS=\"150, *\" BORDER=0 ID=fs1>");
+        client_write( httpd,"    <FRAME SRC=\"/ActiveList\" NORESIZE NAME=\"list\">");
+        client_write( httpd,"    <FRAME SRC=\"/About\" NORESIZE NAME=\"conv\">");
+        client_write( httpd,"   </FRAMESET>");
         client_write( httpd," </head>\n");
         client_write( httpd,"</html>\n");
         client_write( httpd,"\n\n");
