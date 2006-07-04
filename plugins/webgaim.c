@@ -38,19 +38,19 @@ static char  *license = "\
  *   - http://localhost:8888/ should display the Root/Home page
  */
 
-#define WEBGAIM_VERSION "2.0-B14"
+#define WEBGAIM_VERSION "2.0-BXX"
 
 /**
  * CHANGES:
  *     TODO:
  *       - Colorize History Display
  *       - Add History Searching using regex?
- *       - Make options screen actually DO something like allow you to set options
  *
- *     2.0-XXX
+ *     2.0-BXX
  *       - Added Basic History Code
  *       - Added Option for frames ( Active Buddy List In Frames )
  *       - Moved Login/Account management to new screen
+ *       - Options can be manipulated from the options screen
  *     2.0-B14
  *       - Integrate Patch from David Morse
  *         + Display status message (if set) next to buddies (David Morse)
@@ -165,13 +165,22 @@ static char  *license = "\
 #endif
 
 
+static void webgaim_save_pref_bool( const char * pref, unsigned enabled );
+static void webgaim_load_pref();
+
+
+
 
 /// Hardcode the port # for now
+const char * gOptionUsername = NULL;
+const char * gOptionPassword = NULL;
+const char * gOptionPort = NULL;
 static unsigned uOptionTrim = 100; // trim after 100 messages
 static gboolean gOptionUseColor = 1;
 static gboolean gOptionBoldNames = 1;
 static gboolean gOptionStatusMessages = 1;
 static gboolean gOptionWWWFrames = 0;
+
 
 typedef struct{
     const char * name;
@@ -238,6 +247,31 @@ typedef struct webgaim_chat_s webgaim_chat_t;
 
 static const char *empty_string ="";
 static webgaim_chat_t head = { NULL,NULL,0,NULL };
+
+/**
+ * @brief load all webgaim prefs
+ */
+static void webgaim_load_pref()
+{
+    gOptionUseColor = gaim_prefs_get_bool("/plugins/webgaim/use_color");
+    gOptionBoldNames = gaim_prefs_get_bool("/plugins/webgaim/use_bold_names");
+    gOptionWWWFrames = gaim_prefs_get_bool("/plugins/webgaim/use_www_frames");
+    gOptionStatusMessages = gaim_prefs_get_bool("/plugins/webgaim/use_status_messages");
+    gOptionUsername = gaim_prefs_get_string("/plugins/webgaim/server_user");
+    gOptionPassword = gaim_prefs_get_string("/plugins/webgaim/server_password");
+    gOptionPort = gaim_prefs_get_string("/plugins/webgaim/server_port");
+}
+
+/**
+ * @brief Common pref save code, since we now use it in multiple places
+ */
+static void webgaim_save_pref_bool( const char * pref, unsigned enabled )
+{
+    gchar gcPref[256];
+    g_snprintf(gcPref, sizeof(gcPref), "/plugins/webgaim/%s",  pref );
+    gaim_prefs_set_bool(gcPref, enabled);
+    gaim_debug_info("WebGaim 2","Saved-Pref: %s = [%d]\n",pref, enabled);
+}
 
 /**
  * @brief find the chat instance for this buddy 
@@ -785,13 +819,81 @@ static int action_active_list( webgaim_client_t * httpd, const char * notused )
     return 1;
 }
 
-static int action_options( webgaim_client_t * httpd, const char * notused )
+/**
+ * @brief Given a WWW encoded post string, see if a "checkbox" is set with the given name
+ */
+static unsigned webgaim_get_param_bool( const char *data, const char * param )
 {
+    char *key = NULL;
+    char search[255];
+    snprintf(search,255,"%s=",param); /// in forms the = allways follows mnaking this key unique
+
+    /// If a for object has the named key then we are indeed selected
+    key = strstr(data, search );
+    if( ! key )
+        return 0;
+
+    return 1;
+}
+
+static int action_options( webgaim_client_t * httpd, const char * extra )
+{
+    char buffer[1024];
     client_write_header( httpd,"/Options" );
-    client_write(httpd,"Options go in here");
+
+
+    if( extra != NULL && (strlen(extra) > 0 ) )
+    {
+        //client_write(httpd,"Extra:");
+        //client_write(httpd,extra);
+        ///
+        /// Parse the options we just got in
+        ///
+        /// Bool Prefs:   use_color,use_bold_names,use_www_frames, use_status_messages
+        /// String Prefs: server_user,server_password, server_port
+        ///
+        webgaim_save_pref_bool( "use_color",          webgaim_get_param_bool( extra,"use_color") );
+        webgaim_save_pref_bool( "use_bold_names",     webgaim_get_param_bool( extra,"use_bold_names") );
+        webgaim_save_pref_bool( "use_status_messages",webgaim_get_param_bool( extra,"use_status_messages") );
+        webgaim_save_pref_bool( "use_www_frames",     webgaim_get_param_bool( extra,"use_www_frames") );
+        webgaim_load_pref();
+    }
+
+    client_write(httpd,"<B>Webgaim Options:</B><BR>\n");
+    client_write(httpd,"<form method=\"get\" action=\"/Options?\">\n");
+    client_write(httpd,"<div>\n");
+
+    ///
+    /// Don't let people chane their username password
+    /// over the www
+    ///
+    client_write(httpd,"&nbsp;&nbsp;Username: N/A<BR>\n");
+    client_write(httpd,"&nbsp;&nbsp;Password: N/A<BR>\n");
+    client_write(httpd,"<BR>\n");
+
+    snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=use_color %s>Color Coded History<BR>\n",gOptionUseColor ? "checked" : "");
+    client_write(httpd,buffer);
+
+    snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=use_bold_names %s>Bold Buddy Names<BR>\n",gOptionBoldNames ? "checked" : "");
+    client_write(httpd,buffer);
+
+    snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=use_status_messages %s>Buddy Status Messages<BR>\n",gOptionStatusMessages ? "checked" : "" );
+    client_write(httpd,buffer);
+
+    snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=use_www_frames %s>Enable Frames<BR>\n",gOptionWWWFrames ? "checked" : "");
+    client_write(httpd,buffer);
+
+
+    client_write(httpd,"<BR>\n");
+    client_write(httpd,"&nbsp;&nbsp;<input type=\"submit\" value=\"Save\"/>\n");
+    client_write(httpd,"</div>\n");
+    client_write(httpd,"</form>\n");
+
     client_write_tail( httpd );
     return 1;
 }
+
+
 
 static int action_accounts( webgaim_client_t * httpd, const char * notused )
 {
@@ -1652,40 +1754,31 @@ static void sent_im_msg_cb(GaimAccount *account, const char *recipient, const ch
     chat_send( recipient, buffer );
 }
 
+
+
 /**
  * @brief code to start/restart our httpd mini server
  */
 static void httpd_restart(webgaim_data_t * webgaim)
 {
     unsigned usListenPort = 0;
-    const char * username = NULL;
-    const char * password = NULL;
-    const char * port = NULL;
 
     free( webgaim->auth );
     webgaim->auth = NULL;
 
-    username = gaim_prefs_get_string("/plugins/webgaim/server_user");
-    password = gaim_prefs_get_string("/plugins/webgaim/server_password");
-    gOptionUseColor = gaim_prefs_get_bool("/plugins/webgaim/use_color");
-    gOptionBoldNames = gaim_prefs_get_bool("/plugins/webgaim/use_bold_names");
-    gOptionWWWFrames = gaim_prefs_get_bool("/plugins/webgaim/use_www_frames");
-    gOptionStatusMessages = gaim_prefs_get_bool("/plugins/webgaim/use_status_messages");
-    gaim_debug_info("WebGaim 2","Load::Color code set to [%d]\n",gOptionUseColor);
-    gaim_debug_info("WebGaim 2","Load::Bold Names set to [%d]\n",gOptionBoldNames);
-    gaim_debug_info("WebGaim 2","Load::Status Messages set to [%d]\n",gOptionStatusMessages);
+    webgaim_load_pref();
 
-    if( (username != NULL) && (password != NULL) )
+    if( ( gOptionUsername != NULL) && ( gOptionPassword != NULL) )
     {
-        if( strlen(username) > 0 )
+        if( strlen(gOptionUsername) > 0 )
         {
-            char * temp = g_malloc( strlen(username) + strlen(password) + 2 );
+            char * temp = g_malloc( strlen(gOptionUsername) + strlen( gOptionPassword) + 2 );
             if( temp )
             {
                 unsigned len;
-                strcpy( temp, username );
+                strcpy( temp, gOptionUsername );
                 strcat( temp,":");
-                strcat( temp,password);
+                strcat( temp,gOptionPassword);
                 webgaim->auth = (char *)base64_encode((const unsigned char*)temp,strlen(temp),&len);
                 gaim_debug_info("WebGaim 2","Load::Authorization Key set to [%s]\n",webgaim->auth);
                 free( temp );
@@ -1693,10 +1786,9 @@ static void httpd_restart(webgaim_data_t * webgaim)
         }
     }
 
-    port = gaim_prefs_get_string("/plugins/webgaim/server_port");
-    if( port )
+    if( gOptionPort )
     {
-        if( sscanf(port,"%u",&usListenPort) != 1 )
+        if( sscanf(gOptionPort,"%u",&usListenPort) != 1 )
         {
             usListenPort = webgaim->usListenPort;
         }
@@ -1778,9 +1870,6 @@ static gboolean plugin_unload(GaimPlugin *plugin)
     return TRUE;
 }
 
-
-
-
 static void apply_configuration()
 {
     httpd_restart( webgaim );
@@ -1788,37 +1877,26 @@ static void apply_configuration()
 
 static void type_toggle_cb(GtkWidget *widget, gpointer data)
 {
-    gchar pref[256];
-
     if( strcmp(data,"use_color") == 0 )
     {
         gOptionUseColor = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-        g_snprintf(pref, sizeof(pref), "/plugins/webgaim/%s", (char *)data);
-        gaim_prefs_set_bool(pref, gOptionUseColor);
-        gaim_debug_info("WebGaim 2","Color code set to [%d]\n",gOptionUseColor);
+        webgaim_save_pref_bool( (char*)data, gOptionUseColor );
     }
     else if( strcmp(data,"use_bold_names") == 0  )
     {
         gOptionBoldNames = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-        g_snprintf(pref, sizeof(pref), "/plugins/webgaim/%s", (char *)data);
-        gaim_prefs_set_bool(pref, gOptionBoldNames);
-        gaim_debug_info("WebGaim 2","Bold Set to [%d]\n",gOptionBoldNames);
+        webgaim_save_pref_bool( (char*)data, gOptionBoldNames );
     }
     else if( strcmp(data,"use_status_messages") == 0  )
     {
         gOptionStatusMessages = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-        g_snprintf(pref, sizeof(pref), "/plugins/webgaim/%s", (char *)data);
-        gaim_prefs_set_bool(pref, gOptionStatusMessages);
-        gaim_debug_info("WebGaim 2","Status Messages Set to [%d]\n",gOptionStatusMessages);
+        webgaim_save_pref_bool( (char*)data, gOptionStatusMessages );
     }
     else if( strcmp(data,"use_www_frames") == 0  )
     {
         gOptionWWWFrames = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-        g_snprintf(pref, sizeof(pref), "/plugins/webgaim/%s", (char *)data);
-        gaim_prefs_set_bool(pref, gOptionWWWFrames);
-        gaim_debug_info("WebGaim 2","Frames Set to [%d]\n",gOptionWWWFrames);
+        webgaim_save_pref_bool( (char*)data, gOptionWWWFrames );
     }
-
 }
 
 static gboolean options_entry_cb(GtkWidget *widget, GdkEventFocus *evt, gpointer data)
@@ -1898,14 +1976,6 @@ static GtkWidget * get_config_frame(GaimPlugin *plugin)
     g_signal_connect(G_OBJECT(toggle), "toggled",
                          G_CALLBACK(type_toggle_cb), "use_color");
 
-    toggle = gtk_check_button_new_with_mnemonic(_("Enable Frames"));
-    gtk_box_pack_start(GTK_BOX(vbox), toggle, FALSE, FALSE, 0);
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(toggle),
-                                     gaim_prefs_get_bool("/plugins/webgaim/use_www_frames"));
-    g_signal_connect(G_OBJECT(toggle), "toggled",
-                         G_CALLBACK(type_toggle_cb), "use_www_frames");
-
-
     toggle = gtk_check_button_new_with_mnemonic(_("Bold Buddy Names"));
     gtk_box_pack_start(GTK_BOX(vbox), toggle, FALSE, FALSE, 0);
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(toggle),
@@ -1919,6 +1989,14 @@ static GtkWidget * get_config_frame(GaimPlugin *plugin)
                                      gaim_prefs_get_bool("/plugins/webgaim/use_status_messages"));
     g_signal_connect(G_OBJECT(toggle), "toggled",
                          G_CALLBACK(type_toggle_cb), "use_status_messages");
+
+    toggle = gtk_check_button_new_with_mnemonic(_("Enable Frames"));
+    gtk_box_pack_start(GTK_BOX(vbox), toggle, FALSE, FALSE, 0);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(toggle),
+                                     gaim_prefs_get_bool("/plugins/webgaim/use_www_frames"));
+    g_signal_connect(G_OBJECT(toggle), "toggled",
+                         G_CALLBACK(type_toggle_cb), "use_www_frames");
+
 
     gtk_widget_show_all(ret);
     return ret;
