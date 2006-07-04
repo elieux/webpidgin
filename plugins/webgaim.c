@@ -1300,7 +1300,7 @@ static char * webgaim_log_read_reverse(GaimLog *log, GaimLogReadFlags *flags)
         }
         
         strcpy(reversed,"");
-        while( ( p = rindex(data,'\n') ) )
+        while( ( p = strrchr(data,'\n') ) )
         {
             *p='\0';
             p++;
