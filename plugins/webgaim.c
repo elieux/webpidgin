@@ -38,7 +38,7 @@ static char  *license = "\
  *   - http://localhost:8888/ should display the Root/Home page
  */
 
-#define WEBGAIM_VERSION "2.0-BXX"
+#define WEBGAIM_VERSION "2.0-B15"
 
 /**
  * CHANGES:
@@ -46,7 +46,7 @@ static char  *license = "\
  *       - Colorize History Display
  *       - Add History Searching using regex?
  *
- *     2.0-BXX
+ *     2.0-B15
  *       - Added Basic History Code
  *       - Added Option for frames ( Active Buddy List In Frames )
  *       - Moved Login/Account management to new screen
@@ -755,8 +755,6 @@ static int action_active_list( webgaim_client_t * httpd, const char * notused )
                 {
                     char * name;
                     GaimBuddy *buddy = (GaimBuddy *)bnode;
-                    GaimStatus *status;
-                    const char *status_msg = NULL;
     
                     if ( ! GAIM_BUDDY_IS_ONLINE(buddy))
                         continue;
@@ -780,9 +778,14 @@ static int action_active_list( webgaim_client_t * httpd, const char * notused )
                     g_free(name);
                     client_write(httpd,buffer);
 
+
+#if GAIM_MAJOR_VERSION >= 2
                     /* Retrieve and display status message, if one exists */
+                    /* Only suported by GAIM 2.0+ */
                     if (gOptionStatusMessages)
                     {
+                        GaimStatus *status;
+                        const char *status_msg = NULL;
                         status = gaim_presence_get_active_status(buddy->presence);
                         status_msg = gaim_value_get_string(gaim_status_get_attr_value(status, "message"));
                         if ((status_msg != NULL) && (*status_msg != '\0')) {
@@ -792,7 +795,7 @@ static int action_active_list( webgaim_client_t * httpd, const char * notused )
                             g_free(stripped_status_msg);
                         }
                     }
-
+#endif
                     /* Idle - lifted largely from gaim/src/gtkblist.c */
                     if (gaim_presence_is_idle(buddy->presence))
                     {
@@ -887,8 +890,10 @@ static int action_options( webgaim_client_t * httpd, const char * extra )
     snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=use_bold_names %s>Bold Buddy Names<BR>\n",gOptionBoldNames ? "checked" : "");
     client_write(httpd,buffer);
 
+#if GAIM_MAJOR_VERSION >= 2
     snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=use_status_messages %s>Buddy Status Messages<BR>\n",gOptionStatusMessages ? "checked" : "" );
     client_write(httpd,buffer);
+#endif
 
     snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=use_www_frames %s>Enable Frames<BR>\n",gOptionWWWFrames ? "checked" : "");
     client_write(httpd,buffer);
@@ -2027,12 +2032,14 @@ static GtkWidget * get_config_frame(GaimPlugin *plugin)
     g_signal_connect(G_OBJECT(toggle), "toggled",
                          G_CALLBACK(type_toggle_cb), "use_bold_names");
 
+#if GAIM_MAJOR_VERSION >= 2
     toggle = gtk_check_button_new_with_mnemonic(_("Buddy Status Messages"));
     gtk_box_pack_start(GTK_BOX(vbox), toggle, FALSE, FALSE, 0);
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(toggle),
                                      gaim_prefs_get_bool("/plugins/webgaim/use_status_messages"));
     g_signal_connect(G_OBJECT(toggle), "toggled",
                          G_CALLBACK(type_toggle_cb), "use_status_messages");
+#endif
 
     toggle = gtk_check_button_new_with_mnemonic(_("Enable Frames"));
     gtk_box_pack_start(GTK_BOX(vbox), toggle, FALSE, FALSE, 0);
