@@ -1284,6 +1284,40 @@ static int action_about( webgaim_client_t * httpd, const char * extra )
     return 1;
 }
 
+static char * webgaim_log_read_reverse(GaimLog *log, GaimLogReadFlags *flags)
+{
+    char * data = gaim_log_read( log, flags );
+    if( data )
+    {
+        unsigned max=strlen(data);
+        char *p= NULL;
+        char *reversed =  g_malloc( max+1  );
+        
+        if( ! reversed )
+        {
+            g_free(data);
+            return NULL;
+        }
+        
+        strcpy(reversed,"");
+        while( ( p = rindex(data,'\n') ) )
+        {
+            *p='\0';
+            p++;
+            if( strlen(p) > 0 )
+            {
+                strncat(reversed,p,max-strlen(reversed));
+                strncat(reversed,"\n",max-strlen(reversed));
+            }
+        }
+        strncat(reversed,data,max-strlen(reversed));
+
+        g_free( data );
+        return reversed;
+    }
+    return NULL;
+}
+
 static int action_history( webgaim_client_t * httpd, const char * extra )
 {
     char buffer[1024];
@@ -1314,11 +1348,12 @@ static int action_history( webgaim_client_t * httpd, const char * extra )
         if( logs )
         {
             GList *log;
+
             for (log = logs; log != NULL; log = log->next) 
             {
                 GaimLog * gaimLog = log->data;
+                char *data = webgaim_log_read_reverse(gaimLog, NULL);
 
-                char *data = gaim_log_read(gaimLog, NULL);
                 if( data )
                 {
                     strftime(buffer, 1024,"%c" , localtime(&gaimLog->time) );
@@ -1326,11 +1361,9 @@ static int action_history( webgaim_client_t * httpd, const char * extra )
                     client_write(httpd,"<PRE>\n");
                     client_write(httpd,data);
                     client_write(httpd,"</PRE>\n");
-                    client_write(httpd,"<BR>");
                     g_free(data);
                 }
             }
-
         }
         else
         {
