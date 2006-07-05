@@ -797,31 +797,33 @@ static int action_active_list( webgaim_client_t * httpd, const char * notused )
                     }
 #endif
                     /* Idle - lifted largely from gaim/src/gtkblist.c */
+
+#if GAIM_MAJOR_VERSION >= 2
                     if (gaim_presence_is_idle(buddy->presence))
                     {
                         time_t idle_secs = gaim_presence_get_idle_time(buddy->presence);
-                    if (idle_secs > 0) {
-                        int ihrs, imin;
+                        if (idle_secs > 0) {
+                            int ihrs, imin;
                             time_t t;
 
-                        time(&t);
-                        gaim_debug_info("Webgaim 2","Buddy %s has been idle for %d sec\n", buddy->name, t - idle_secs);
-                        ihrs = (t - idle_secs) / 3600;
-                        imin = ((t - idle_secs) / 60) % 60;
+                            time(&t);
+                            gaim_debug_info("Webgaim 2","Buddy %s has been idle for %d sec\n", buddy->name, t - idle_secs);
+                            ihrs = (t - idle_secs) / 3600;
+                            imin = ((t - idle_secs) / 60) % 60;
 
-                        if (ihrs)
+                            if (ihrs)
                                 snprintf(buffer,4096," (Idle %dh %02dm)", ihrs, imin);
-                        else
+                            else
                                 snprintf(buffer,4096," (Idle %dm)", imin);
-                    }
-                    else
-                        snprintf(buffer,4096," (Idle)");
+                        }
+                        else
+                            snprintf(buffer,4096," (Idle)");
 
-                    client_write(httpd,buffer);
+                        client_write(httpd,buffer);
                     } else if (!gaim_presence_is_available(buddy->presence)) {
                         client_write(httpd," (Away)");
                     }
-
+#endif 
                     client_write(httpd,"<BR>\n");
                 }
             }
