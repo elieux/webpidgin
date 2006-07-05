@@ -162,7 +162,12 @@ static char  *license = "\
 #include <stdio.h>
 
 #if GAIM_MAJOR_VERSION < 2
-  #define GAIM_CONV_TYPE_IM GAIM_CONV_IM
+#define GAIM_CONV_TYPE_IM GAIM_CONV_IM
+static char * gaim_markup_strip_html(char *param)
+{
+    return param;
+}
+  
 #endif
 
 
