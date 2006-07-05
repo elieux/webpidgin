@@ -248,6 +248,9 @@ typedef struct webgaim_chat_s webgaim_chat_t;
 static const char *empty_string ="";
 static webgaim_chat_t head = { NULL,NULL,0,NULL };
 
+/// Workaround for buggy gcc warning re: strftime (http://www.die.net/doc/linux/man/man3/strftime.3.html)
+size_t webgaim_strftime(char *s, size_t max, const char *fmt, const struct tm *tm) { return strftime(s, max, fmt, tm); }
+
 /// Prototypes of functions, so they can be called before they're defined
 static void webgaim_save_pref_bool( const char * pref, unsigned enabled );
 static void webgaim_load_pref();
@@ -1380,7 +1383,7 @@ static int action_history( webgaim_client_t * httpd, const char * extra )
 
                 if( data )
                 {
-                    strftime(buffer, 1024,"%c" , localtime(&gaimLog->time) );
+                    webgaim_strftime(buffer, 1024,"%c" , localtime(&gaimLog->time) );
                     client_write(httpd, buffer);
                     client_write(httpd,"<PRE>\n");
                     client_write(httpd,data);
@@ -1769,6 +1772,7 @@ static void webgaim_connect_request_cb(gpointer data, gint sock, GaimInputCondit
 /**
  * @brief callback for GAIM 2.0+ when a listen socket is created
  */
+#if GAIM_MAJOR_VERSION >= 2
 static void webgaim_listen_cb(int fd, gpointer data )
 {
     webgaim_data_t * webgaim = ( webgaim_data_t * ) data;
@@ -1783,6 +1787,7 @@ static void webgaim_listen_cb(int fd, gpointer data )
         webgaim->usListenPort = 0;
     }
 }
+#endif
 
 /**
  * @brief callback when a gaim IM message was received
