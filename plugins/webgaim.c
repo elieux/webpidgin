@@ -1108,6 +1108,10 @@ static int action_login( webgaim_client_t * httpd, const char * extra )
     if( account )
     {    
         char buffer[1024];
+
+#if GAIM_MAJOR_VERSION >= 2
+        gaim_account_set_enabled(account, GAIM_GTK_UI, TRUE);
+#endif
         gaim_account_connect( account );
         snprintf(buffer,1024,"Logging into %s",extra);
         client_write(httpd,buffer);
@@ -1133,6 +1137,10 @@ static int action_logout( webgaim_client_t * httpd, const char * extra )
     {
         char buffer[1024];
         gaim_account_disconnect( account );
+
+#if GAIM_MAJOR_VERSION >= 2
+        gaim_account_set_enabled(account, GAIM_GTK_UI, FALSE);
+#endif
         snprintf(buffer,1024,"Logged off of %s",extra);
         client_write(httpd,buffer);
     }
