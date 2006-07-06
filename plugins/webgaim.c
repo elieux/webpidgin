@@ -989,15 +989,15 @@ static int action_accounts( webgaim_client_t * httpd, const char * notused )
         if( gaim_account_is_connected( (GaimAccount*) account_iter->data ) )
         {
             gaim_debug_info("WebGaim 2","[%s] connected\n",display);
-            snprintf(buffer,4096,"&nbsp;<A HREF=logout?%s&%s>(logout)</A> %s<BR>\n",
+            snprintf(buffer,4096,"&nbsp;<A HREF=logout?%s&%s target=\"_top\">(logout)</A> %s<BR>\n",
                                  encoded_user,proto,display);
 
-            client_write( httpd,buffer);
+            client_write(httpd,buffer);
         }
         else
         {
             gaim_debug_info("WebGaim 2","[%s] disconnected\n",display);
-            snprintf(buffer,4096,"&nbsp;<A HREF=login?%s&%s>(login)</A> %s<BR>\n",
+            snprintf(buffer,4096,"&nbsp;<A HREF=login?%s&%s target=\"_top\">(login)</A> %s<BR>\n",
                             encoded_user,proto,display);
             client_write( httpd,buffer);
         }
@@ -1025,7 +1025,7 @@ static int action_root( webgaim_client_t * httpd, const char * notused )
         client_write( httpd,"  Please <A HREF=/Options>click here</A> and uncheck Enable Frames</body></noframes>\n");
         client_write( httpd,"   <FRAMESET COLS=\"150, *\" BORDER=0 ID=fs1>");
         client_write( httpd,"    <FRAME SRC=\"/ActiveList\" NORESIZE NAME=\"list\">");
-        client_write( httpd,"    <FRAME SRC=\"/About\" NORESIZE NAME=\"conv\">");
+        client_write( httpd,"    <FRAME SRC=\"/Status\" NORESIZE NAME=\"conv\">");
         client_write( httpd,"   </FRAMESET>");
         client_write( httpd," </head>\n");
         client_write( httpd,"</html>\n");
@@ -1099,25 +1099,18 @@ static int action_login( webgaim_client_t * httpd, const char * extra )
     char * decoded = NULL;
     GaimAccount * account;
     gaim_debug_info("WebGaim 2","%s (%s)\n",__FUNCTION__,extra);
-    
-    client_write_header( httpd,"/" );
 
     decoded = webgaim_normalize( extra );
     account=find_account(decoded);
     g_free(decoded);
     if( account )
     {    
-        char buffer[1024];
-
 #if GAIM_MAJOR_VERSION >= 2
         gaim_account_set_enabled(account, GAIM_GTK_UI, TRUE);
 #endif
         gaim_account_connect( account );
-        snprintf(buffer,1024,"Logging into %s",extra);
-        client_write(httpd,buffer);
     }
-    client_write_tail( httpd );
-    return 1;
+    return action_root(httpd,NULL); // return to root page after preferences saved & reloaded
 }
 
 /**
@@ -1128,24 +1121,17 @@ static int action_logout( webgaim_client_t * httpd, const char * extra )
     char * decoded = NULL;
     GaimAccount * account;
     gaim_debug_info("WebGaim 2","%s (%s)\n",__FUNCTION__,extra);
-    client_write_header( httpd,"/" );
-
     decoded = webgaim_normalize( extra );
     account=find_account(decoded);
     g_free(decoded);
     if( account )
     {
-        char buffer[1024];
         gaim_account_disconnect( account );
-
 #if GAIM_MAJOR_VERSION >= 2
         gaim_account_set_enabled(account, GAIM_GTK_UI, FALSE);
 #endif
-        snprintf(buffer,1024,"Logged off of %s",extra);
-        client_write(httpd,buffer);
     }
-    client_write_tail( httpd );
-    return 1;
+    return action_root(httpd,NULL); // return to root page after preferences saved & reloaded
 }
 
 /**
@@ -1176,16 +1162,12 @@ static int action_chat( webgaim_client_t * httpd, const char * extra )
     client_write(httpd,"</div>\n");
     client_write(httpd,"</form>\n");
 
-
     /// Show any active chats from other users. IE we're talking to bob, but in the meantime sally IM-ed us
     /// show sally has an unread message for us. ( Just like the Active: buddies section on the root page )
     show_active_chats( httpd, name );
     g_free( name );
 
-
-
     client_write(httpd,"<HR>");
-
     if( chat )
     {
         webgaim_conv_t * conv = NULL;
@@ -1423,6 +1405,32 @@ static int action_history( webgaim_client_t * httpd, const char * extra )
 }
 
 /**
+ * @brief This is the Initial Page WHen opening wegaim
+ */
+static int action_status( webgaim_client_t * httpd, const char * unused )
+{
+    char buffer[1024];
+
+    snprintf(buffer,1024,"/Status?%s",time_stamp());
+    client_write_header( httpd,buffer);
+
+    client_write(httpd,"Webgaim Version: ");
+    client_write(httpd,WEBGAIM_VERSION);
+    client_write(httpd,"<BR>\n");
+    
+    //More stuff here like, e-mail notices etc
+    //client_write(httpd,"<B>New E-Mail:</B>");
+    //client_write(httpd,"Updates");
+    strcpy(buffer,"");
+    show_active_chats( httpd, buffer );
+
+    client_write(httpd,"<BR> Status Information Goes Here<BR>");
+    client_write_tail( httpd );
+    return 1;
+}
+
+
+/**
  * @brief Action dispatcher  structure, matches the http-post request to
  * @brief the appropriate action_xxx call for handling
  */
@@ -1437,7 +1445,8 @@ static webgaim_parse_t webgaim_actions[] = {
     { "/Accounts",action_accounts },
     { "/Options",action_options },
     { "/About",action_about },
-    { "/history",action_history }
+    { "/history",action_history },
+    { "/Status",action_status }
 };
 ///****************************************************************************************************///
 ///  WEBSERVER CODE:  The code below deals with the webserver micro engine
