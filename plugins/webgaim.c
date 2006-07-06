@@ -46,6 +46,10 @@ static char  *license = "\
  *       - Colorize History Display
  *       - Add History Searching using regex?
  *
+ *     2.0-BXX
+ *       - Buddies In the webgaim Buddy List will now be layed out in the
+ *          same manner as in gaim. ( Buddies->Sort Buddies )
+ *       -
  *     2.0-B15
  *       - Added Basic History Code
  *       - Added Option for frames ( Active Buddy List In Frames )
@@ -149,6 +153,10 @@ static char  *license = "\
 
 #include "gtkplugin.h"
 #include "gtkutils.h"
+#include "gtkblist.h"
+#include <gdk/gdkkeysyms.h>
+#include <gtk/gtk.h>
+#include <gdk/gdk.h>
 
 #ifndef _WIN32
 #include <X11/Xatom.h>
@@ -249,7 +257,10 @@ static const char *empty_string ="";
 static webgaim_chat_t head = { NULL,NULL,0,NULL };
 
 /// Workaround for buggy gcc warning re: strftime (http://www.die.net/doc/linux/man/man3/strftime.3.html)
-size_t webgaim_strftime(char *s, size_t max, const char *fmt, const struct tm *tm) { return strftime(s, max, fmt, tm); }
+static size_t webgaim_strftime(char *s, size_t max, const char *fmt, const struct tm *tm) 
+{ 
+    return strftime(s, max, fmt, tm); 
+}
 
 /// Prototypes of functions, so they can be called before they're defined
 static void webgaim_save_pref_bool( const char * pref, unsigned enabled );
@@ -648,6 +659,128 @@ static void client_write_tail( webgaim_client_t * httpd )
     client_write( httpd,"\n\n");
 }
 
+
+static void webgaim_show_buddy(webgaim_client_t * httpd,const char * extra_html,GaimBuddy *buddy )
+{
+    char buffer[4096];
+    char * name = webgaim_encode( buddy->name );
+
+    if( buddy->alias )
+    {
+        snprintf(buffer,4096,"&nbsp;&nbsp; <A HREF=chat?%s%s %s> %s</A>",time_stamp(),name,extra_html,buddy->alias);
+    }
+    else if( buddy->server_alias )
+    {
+        snprintf(buffer,4096,"&nbsp;&nbsp; <A HREF=chat?%s%s %s> %s</A>",time_stamp(),name,extra_html,buddy->server_alias);
+    }
+    else
+    {
+        snprintf(buffer,4096,"&nbsp;&nbsp;<A HREF=chat?%s%s %s> %s</A>",time_stamp(),name,extra_html,buddy->name);
+    }
+    g_free(name);
+    client_write(httpd,buffer);
+
+
+#if GAIM_MAJOR_VERSION >= 2
+    /* Retrieve and display status message, if one exists */
+    /* Only suported by GAIM 2.0+ */
+    if (gOptionStatusMessages)
+    {
+        GaimStatus *status;
+        const char *status_msg = NULL;
+        status = gaim_presence_get_active_status(buddy->presence);
+        status_msg = gaim_value_get_string(gaim_status_get_attr_value(status, "message"));
+        if ((status_msg != NULL) && (*status_msg != '\0')) {
+            char *stripped_status_msg = gaim_markup_strip_html(status_msg);
+            client_write(httpd," ");
+            client_write(httpd,stripped_status_msg);
+            g_free(stripped_status_msg);
+        }
+    }
+#endif
+                    /* Idle - lifted largely from gaim/src/gtkblist.c */
+
+#if GAIM_MAJOR_VERSION >= 2
+    if (gaim_presence_is_idle(buddy->presence))
+    {
+        time_t idle_secs = gaim_presence_get_idle_time(buddy->presence);
+        if (idle_secs > 0) {
+            int ihrs, imin;
+            time_t t;
+
+            time(&t);
+            gaim_debug_info("Webgaim 2","Buddy %s has been idle for %d sec\n", buddy->name, t - idle_secs);
+            ihrs = (t - idle_secs) / 3600;
+            imin = ((t - idle_secs) / 60) % 60;
+
+            if (ihrs)
+                snprintf(buffer,4096," (Idle %dh %02dm)", ihrs, imin);
+            else
+                snprintf(buffer,4096," (Idle %dm)", imin);
+        }
+        else
+            snprintf(buffer,4096," (Idle)");
+
+        client_write(httpd,buffer);
+    } else if (!gaim_presence_is_available(buddy->presence)) {
+        client_write(httpd," (Away)");
+    }
+#endif 
+    client_write(httpd,"<BR>\n");
+}
+
+
+static void webgaim_buddy_list_walk( webgaim_client_t * httpd,const char * extra_html,GtkTreeModel *model,  GtkTreeIter * parent)
+{
+    char buffer[4096];
+    GValue val;
+    GaimBlistNode *node;
+    do{
+        val.g_type = 0;
+        gtk_tree_model_get_value (model, parent, NODE_COLUMN, &val);
+        node = g_value_get_pointer(&val);
+        switch (node->type)
+        {
+            case GAIM_BLIST_GROUP_NODE:{
+                GtkTreeIter child;
+                GaimGroup *group = (GaimGroup*) node;
+                snprintf(buffer,4096,"<B>%s</B><BR>\n",group->name);
+                client_write(httpd,buffer);
+
+                if( gtk_tree_model_iter_children(model,&child,parent) )
+                    webgaim_buddy_list_walk( httpd,extra_html,model,&child);
+            }break;
+
+
+            case GAIM_BLIST_CONTACT_NODE:{
+                GaimContact *contact = (GaimContact *)node;
+                if ( contact->alias )
+                {
+                    /// not sure yet
+                    //snprintf(buffer,4096,"<B>type=%d ( not sure )</B><BR>\n",node->type);
+                    //client_write(httpd,buffer);
+                }
+                else
+                {
+                    GaimBuddy *buddy = gaim_contact_get_priority_buddy(contact);
+                    webgaim_show_buddy( httpd, extra_html, buddy );
+                }
+            }break;
+
+            case GAIM_BLIST_BUDDY_NODE:{
+                GaimBuddy *buddy = (GaimBuddy*) node;
+                webgaim_show_buddy( httpd, extra_html, buddy );
+            }break;
+
+            default:
+                snprintf(buffer,4096,"<B>type=%ds</B><BR>\n",node->type);
+                client_write(httpd,buffer);
+            break;
+        }
+    }while( gtk_tree_model_iter_next(model,parent) );
+}
+
+
 /**
  * @brief list all buddies that have active chat sessions and how many unread mesages we have
  * @brief (x) BuddyName [n] :: Where x is #unread messages, and n is a quick access key for mobile phones
@@ -727,7 +860,8 @@ static void show_active_chats( webgaim_client_t * httpd, const char * except )
 
 static int action_active_list( webgaim_client_t * httpd, const char * notused )
 {
-    char buffer[4096]; // yuck buffer overflow waiting to happen!!
+    GaimGtkBuddyList *gtkblist = gaim_gtk_blist_get_default_gtk_blist();
+    GtkTreeIter iter;
     char extra_html[512];
     gaim_debug_info("WebGaim 2","%s\n",__FUNCTION__);
 
@@ -741,103 +875,13 @@ static int action_active_list( webgaim_client_t * httpd, const char * notused )
         strncat(extra_html," target=\"conv\" ", 511-strlen(extra_html));
     }
 
-    client_write( httpd,"Online:<BR>");        
 
     /// Walk through all the buddy lists and display them
-    /// FIXME: right now we display ALL logged in buddies
-    ///        it would be much nicer if the main page only displayed 
-    ///        buddies with active conversations
+    /// Our buddy display should now match whatever gaim chooses :)
+    if( gtk_tree_model_get_iter_first(GTK_TREE_MODEL(gtkblist->treemodel),&iter) )
     {
-        GaimBlistNode *gnode, *cnode, *bnode;
-        for (gnode = gaim_get_blist()->root; gnode != NULL; gnode = gnode->next)
-        {
-            if (!GAIM_BLIST_NODE_IS_GROUP(gnode))
-                continue;
-
-            for (cnode = gnode->child; cnode != NULL; cnode = cnode->next)
-            {
-                if (!GAIM_BLIST_NODE_IS_CONTACT(cnode))
-                    continue;
-    
-                for (bnode = cnode->child; bnode != NULL; bnode = bnode->next)
-                {
-                    char * name;
-                    GaimBuddy *buddy = (GaimBuddy *)bnode;
-    
-                    if ( ! GAIM_BUDDY_IS_ONLINE(buddy))
-                        continue;
-
-                    name = webgaim_encode( buddy->name );
-
-                    gaim_debug_info("Webgaim 2","Buddy %s is online\n",buddy->name);
-
-                    if( buddy->alias )
-                    {
-                        snprintf(buffer,4096,"&nbsp;&nbsp; <A HREF=chat?%s%s %s> %s</A>",time_stamp(),name,extra_html,buddy->alias);
-                    }
-                    else if( buddy->server_alias )
-                    {
-                        snprintf(buffer,4096,"&nbsp;&nbsp; <A HREF=chat?%s%s %s> %s</A>",time_stamp(),name,extra_html,buddy->server_alias);
-                    }
-                    else
-                    {
-                        snprintf(buffer,4096,"&nbsp;&nbsp;<A HREF=chat?%s%s %s> %s</A>",time_stamp(),name,extra_html,buddy->name);
-                    }
-                    g_free(name);
-                    client_write(httpd,buffer);
-
-
-#if GAIM_MAJOR_VERSION >= 2
-                    /* Retrieve and display status message, if one exists */
-                    /* Only suported by GAIM 2.0+ */
-                    if (gOptionStatusMessages)
-                    {
-                        GaimStatus *status;
-                        const char *status_msg = NULL;
-                        status = gaim_presence_get_active_status(buddy->presence);
-                        status_msg = gaim_value_get_string(gaim_status_get_attr_value(status, "message"));
-                        if ((status_msg != NULL) && (*status_msg != '\0')) {
-                            char *stripped_status_msg = gaim_markup_strip_html(status_msg);
-                            client_write(httpd," ");
-                            client_write(httpd,stripped_status_msg);
-                            g_free(stripped_status_msg);
-                        }
-                    }
-#endif
-                    /* Idle - lifted largely from gaim/src/gtkblist.c */
-
-#if GAIM_MAJOR_VERSION >= 2
-                    if (gaim_presence_is_idle(buddy->presence))
-                    {
-                        time_t idle_secs = gaim_presence_get_idle_time(buddy->presence);
-                        if (idle_secs > 0) {
-                            int ihrs, imin;
-                            time_t t;
-
-                            time(&t);
-                            gaim_debug_info("Webgaim 2","Buddy %s has been idle for %d sec\n", buddy->name, t - idle_secs);
-                            ihrs = (t - idle_secs) / 3600;
-                            imin = ((t - idle_secs) / 60) % 60;
-
-                            if (ihrs)
-                                snprintf(buffer,4096," (Idle %dh %02dm)", ihrs, imin);
-                            else
-                                snprintf(buffer,4096," (Idle %dm)", imin);
-                        }
-                        else
-                            snprintf(buffer,4096," (Idle)");
-
-                        client_write(httpd,buffer);
-                    } else if (!gaim_presence_is_available(buddy->presence)) {
-                        client_write(httpd," (Away)");
-                    }
-#endif 
-                    client_write(httpd,"<BR>\n");
-                }
-            }
-        }
+        webgaim_buddy_list_walk(httpd,extra_html,GTK_TREE_MODEL(gtkblist->treemodel),&iter);
     }
-
     client_write_tail( httpd );
     return 1;
 }
@@ -994,13 +1038,14 @@ static int action_root( webgaim_client_t * httpd, const char * notused )
     return 1;
 }
 
+
 /**
  * @brief Display the entire known buddy list
  */
 static int action_buddy_list( webgaim_client_t * httpd, const char * notused )
 {
-    char buffer[4096];
-    GaimBlistNode *gnode, *cnode, *bnode;
+    GaimGtkBuddyList *gtkblist = gaim_gtk_blist_get_default_gtk_blist();
+    GtkTreeIter iter;
     char extra_html[512];
 
     strcpy(extra_html,"");
@@ -1010,45 +1055,9 @@ static int action_buddy_list( webgaim_client_t * httpd, const char * notused )
     }
 
     client_write_header(httpd,"/BuddyList");
-    gaim_debug_info("WebGaim 2","%s\n",__FUNCTION__);
-    for (gnode = gaim_get_blist()->root; gnode != NULL; gnode = gnode->next)
+    if( gtk_tree_model_get_iter_first(GTK_TREE_MODEL(gtkblist->treemodel),&iter) )
     {
-        if (!GAIM_BLIST_NODE_IS_GROUP(gnode))
-            continue;
-
-        for (cnode = gnode->child; cnode != NULL; cnode = cnode->next)
-        {
-            if (!GAIM_BLIST_NODE_IS_CONTACT(cnode))
-                continue;
-
-            for (bnode = cnode->child; bnode != NULL; bnode = bnode->next)
-            {
-                int online = 0;
-                char *name;
-                GaimBuddy *buddy = (GaimBuddy *)bnode;
-
-                if ( GAIM_BUDDY_IS_ONLINE(buddy))
-                {
-                    online = 1;
-                }
-
-                name = webgaim_encode( buddy->name );
-                if( buddy->alias )
-                {
-                    snprintf(buffer,4096,"&nbsp;&nbsp; <A HREF=chat?%s%s %s> %s</A><BR>\n",time_stamp(),name,extra_html,buddy->alias);
-                }
-                else if( buddy->server_alias )
-                {
-                    snprintf(buffer,4096,"&nbsp;&nbsp; <A HREF=chat?%s%s %s> %s</A><BR>\n",time_stamp(),name,extra_html,buddy->server_alias);
-                }
-                else
-                {
-                    snprintf(buffer,4096,"&nbsp;&nbsp;<A HREF=chat?%s%s %s> %s</A><BR>\n",time_stamp(),name,extra_html,buddy->name);
-                }
-                g_free(name);
-                client_write(httpd,buffer);
-            }
-        }
+        webgaim_buddy_list_walk(httpd,extra_html,GTK_TREE_MODEL(gtkblist->treemodel),&iter);
     }
     client_write_tail(httpd);
     return 1;
