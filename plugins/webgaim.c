@@ -47,9 +47,10 @@ static char  *license = "\
  *       - Add History Searching using regex?
  *
  *     2.0-BXX
- *       - Buddies In the webgaim Buddy List will now be layed out in the
- *          same manner as in gaim. ( Buddies->Sort Buddies )
- *       -
+ *       - Buddies in the WebGaim Buddy List will now be laid out in the
+ *          same manner as in Gaim, including Groups. ( Buddies->Sort Buddies )
+ *       - Removed support for Gaim < 2.0; code was getting too messy
+ *       - Status stub
  *     2.0-B15
  *       - Added Basic History Code
  *       - Added Option for frames ( Active Buddy List In Frames )
@@ -168,16 +169,6 @@ static char  *license = "\
 #include <time.h>
 #include <ctype.h>
 #include <stdio.h>
-
-#if GAIM_MAJOR_VERSION < 2
-#define GAIM_CONV_TYPE_IM GAIM_CONV_IM
-static char * gaim_markup_strip_html(char *param)
-{
-    return param;
-}
-  
-#endif
-
 
 /// Hardcode the port # for now
 const char * gOptionUsername = NULL;
@@ -681,9 +672,7 @@ static void webgaim_show_buddy(webgaim_client_t * httpd,const char * extra_html,
     client_write(httpd,buffer);
 
 
-#if GAIM_MAJOR_VERSION >= 2
     /* Retrieve and display status message, if one exists */
-    /* Only suported by GAIM 2.0+ */
     if (gOptionStatusMessages)
     {
         GaimStatus *status;
@@ -697,10 +686,8 @@ static void webgaim_show_buddy(webgaim_client_t * httpd,const char * extra_html,
             g_free(stripped_status_msg);
         }
     }
-#endif
-                    /* Idle - lifted largely from gaim/src/gtkblist.c */
 
-#if GAIM_MAJOR_VERSION >= 2
+    /* Idle - lifted largely from gaim/src/gtkblist.c */
     if (gaim_presence_is_idle(buddy->presence))
     {
         time_t idle_secs = gaim_presence_get_idle_time(buddy->presence);
@@ -725,7 +712,6 @@ static void webgaim_show_buddy(webgaim_client_t * httpd,const char * extra_html,
     } else if (!gaim_presence_is_available(buddy->presence)) {
         client_write(httpd," (Away)");
     }
-#endif 
     client_write(httpd,"<BR>\n");
 }
 
@@ -944,10 +930,8 @@ static int action_options( webgaim_client_t * httpd, const char * extra )
     snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=use_bold_names %s>Bold Buddy Names<BR>\n",gOptionBoldNames ? "checked" : "");
     client_write(httpd,buffer);
 
-#if GAIM_MAJOR_VERSION >= 2
     snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=use_status_messages %s>Buddy Status Messages<BR>\n",gOptionStatusMessages ? "checked" : "" );
     client_write(httpd,buffer);
-#endif
 
     snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=use_www_frames %s>Enable Frames<BR>\n",gOptionWWWFrames ? "checked" : "");
     client_write(httpd,buffer);
@@ -1105,12 +1089,18 @@ static int action_login( webgaim_client_t * httpd, const char * extra )
     g_free(decoded);
     if( account )
     {    
-#if GAIM_MAJOR_VERSION >= 2
         gaim_account_set_enabled(account, GAIM_GTK_UI, TRUE);
-#endif
         gaim_account_connect( account );
     }
-    return action_root(httpd,NULL); // return to root page after preferences saved & reloaded
+/*
+    /// FIXME: Gaim needs (a long) time to login...
+#ifdef _WIN32
+    Sleep(5000);
+#else
+    usleep(5000);
+#endif
+*/
+    return action_root(httpd,NULL); // return to root page
 }
 
 /**
@@ -1127,11 +1117,9 @@ static int action_logout( webgaim_client_t * httpd, const char * extra )
     if( account )
     {
         gaim_account_disconnect( account );
-#if GAIM_MAJOR_VERSION >= 2
         gaim_account_set_enabled(account, GAIM_GTK_UI, FALSE);
-#endif
     }
-    return action_root(httpd,NULL); // return to root page after preferences saved & reloaded
+    return action_root(httpd,NULL); // return to root page
 }
 
 /**
@@ -1259,11 +1247,7 @@ static int action_send( webgaim_client_t * httpd, const char * extra )
         normal = webgaim_normalize( message );
 
         
-    #if GAIM_MAJOR_VERSION >= 2
         c = gaim_find_conversation_with_account(GAIM_CONV_TYPE_IM, b->name, b->account);
-    #else
-        c = gaim_find_conversation_with_account(b->name, b->account);
-    #endif
         if( !c )
         {
              c = gaim_conversation_new(GAIM_CONV_TYPE_IM, b->account, b->name);
@@ -1405,7 +1389,7 @@ static int action_history( webgaim_client_t * httpd, const char * extra )
 }
 
 /**
- * @brief This is the Initial Page WHen opening wegaim
+ * @brief This is the Initial Page when opening WebGaim
  */
 static int action_status( webgaim_client_t * httpd, const char * unused )
 {
@@ -1414,7 +1398,7 @@ static int action_status( webgaim_client_t * httpd, const char * unused )
     snprintf(buffer,1024,"/Status?%s",time_stamp());
     client_write_header( httpd,buffer);
 
-    client_write(httpd,"Webgaim Version: ");
+    client_write(httpd,"WebGaim Version: ");
     client_write(httpd,WEBGAIM_VERSION);
     client_write(httpd,"<BR>\n");
     
@@ -1798,7 +1782,6 @@ static void webgaim_connect_request_cb(gpointer data, gint sock, GaimInputCondit
 /**
  * @brief callback for GAIM 2.0+ when a listen socket is created
  */
-#if GAIM_MAJOR_VERSION >= 2
 static void webgaim_listen_cb(int fd, gpointer data )
 {
     webgaim_data_t * webgaim = ( webgaim_data_t * ) data;
@@ -1813,7 +1796,6 @@ static void webgaim_listen_cb(int fd, gpointer data )
         webgaim->usListenPort = 0;
     }
 }
-#endif
 
 /**
  * @brief callback when a gaim IM message was received
@@ -1896,26 +1878,12 @@ static void httpd_restart(webgaim_data_t * webgaim)
         webgaim->usListenPort = usListenPort;
 
 
-      #if GAIM_MAJOR_VERSION >= 2
         if( !gaim_network_listen( usListenPort,SOCK_STREAM ,webgaim_listen_cb, (gpointer)webgaim ) )
         {
             gaim_debug(GAIM_DEBUG_INFO, "WebGaim 2", "Load::WebGaim could not listen port (%d).\n",usListenPort);
             webgaim->usListenPort = 0;
             return;
         }
-      #else
-        {
-            int sock = gaim_network_listen( usListenPort );
-            if( sock < 0 )
-            {
-                gaim_debug(GAIM_DEBUG_INFO, "WebGaim 2", "Load::WebGaim could not listen port (%d).\n",usListenPort);
-                webgaim->usListenPort = 0;
-                return;
-            }
-            webgaim->iListenWatcher = gaim_input_add(sock, GAIM_INPUT_READ, webgaim_connect_request_cb, webgaim );
-            webgaim->fdServerSocket = sock;
-        }
-      #endif
     }
     else
     {
@@ -2070,14 +2038,12 @@ static GtkWidget * get_config_frame(GaimPlugin *plugin)
     g_signal_connect(G_OBJECT(toggle), "toggled",
                          G_CALLBACK(type_toggle_cb), "use_bold_names");
 
-#if GAIM_MAJOR_VERSION >= 2
     toggle = gtk_check_button_new_with_mnemonic(_("Buddy Status Messages"));
     gtk_box_pack_start(GTK_BOX(vbox), toggle, FALSE, FALSE, 0);
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(toggle),
                                      gaim_prefs_get_bool("/plugins/webgaim/use_status_messages"));
     g_signal_connect(G_OBJECT(toggle), "toggled",
                          G_CALLBACK(type_toggle_cb), "use_status_messages");
-#endif
 
     toggle = gtk_check_button_new_with_mnemonic(_("Enable Frames"));
     gtk_box_pack_start(GTK_BOX(vbox), toggle, FALSE, FALSE, 0);
