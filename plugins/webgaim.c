@@ -113,6 +113,7 @@ static char  *license = "\
  *
  * Known Broken:
  *   - Sometimes crashes when Gaim is shutting down
+ *   - Account/Login takes a few seconds, so those buddies don't show up right away (requires refresh)
  *   - webforms mangle things.  We may not unmangle everything correctly yet
  *
  * A little about the UI:
