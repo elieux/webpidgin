@@ -38,7 +38,7 @@ static char  *license = "\
  *   - http://localhost:8888/ should display the Root/Home page
  */
 
-#define WEBGAIM_VERSION "2.0-B15"
+#define WEBGAIM_VERSION "2.0-BXX"
 
 /**
  * CHANGES:
@@ -50,6 +50,8 @@ static char  *license = "\
  *       - Buddies in the WebGaim Buddy List will now be laid out in the
  *          same manner as in Gaim, including Groups. ( Buddies->Sort Buddies )
  *       - Removed support for Gaim < 2.0; code was getting too messy
+ *       - Added Auto-Refresh with meta refresh tag
+ *         + preference to enable/disable, set # seconds in plugin details
  *       - Status stub
  *     2.0-B15
  *       - Added Basic History Code
@@ -95,25 +97,23 @@ static char  *license = "\
  *
  * Things That DO work:
  *   - display Buddies with active messages ontop of chat view
- *   - login and out of accounts ( accounts must be already enabled )
+ *   - login and out of accounts
  *   - IM conversations
  *   - continuing a IM conversation started using gaim
- *   - staring a new IM conversation using the webgaim
+ *   - starting a new IM conversation using webgaim
  *   - root page displays new messages: (3) BuddyName
  *   - timestamp messages
  *   - quick access keys for active conversations. ( IE the [0] | [1] keys indicate the numeric key to hit on a phone for a quick link )
  *   - simple color support
  *   - trim conversations at uOptionTrim messages in a conversation.  Dropping oldest messages
  *   - do our best to unmangle web form data
- *   - compiles for Gaim 1.5
+ *   - compiles for Gaim 2.0+
  *   - Authentication support ( Basic aka base64 )
  *   - Configuration panel for plugin sets username/password
  *
  * Known Broken:
- *   - Same name buddies on multiple accounts. ( IE sam@yahoo and sam@msn looks the same right now )
- *   - Sometimes crashes on shuting down gaim. 
+ *   - Sometimes crashes when Gaim is shutting down
  *   - webforms mangle things.  We may not unmangle everything correctly yet
- *   - sometimes a buddy shows up 2x in the buddy online/active list
  *
  * A little about the UI:
  *  The "CMD:" bar.
@@ -134,6 +134,7 @@ static char  *license = "\
  *   ( As a side effect it will also open a gaim window on the PC running gaim )
  *
  * Things I'm working on:
+ *   - Status page
  *   - error handling 
  *   - Support for chat and chat room
  *   - Follow gaim buddy groups 
@@ -179,6 +180,8 @@ static gboolean gOptionUseColor = 1;
 static gboolean gOptionBoldNames = 1;
 static gboolean gOptionStatusMessages = 1;
 static gboolean gOptionWWWFrames = 0;
+static gboolean gOptionMetaRefresh = 0;
+static int gOptionMetaRefreshSeconds = 180; // refresh after 3 minutes (if enabled)
 
 
 typedef struct{
@@ -276,10 +279,12 @@ static void webgaim_load_pref()
     gOptionUseColor = gaim_prefs_get_bool("/plugins/webgaim/use_color");
     gOptionBoldNames = gaim_prefs_get_bool("/plugins/webgaim/use_bold_names");
     gOptionWWWFrames = gaim_prefs_get_bool("/plugins/webgaim/use_www_frames");
+    gOptionMetaRefresh = gaim_prefs_get_bool("/plugins/webgaim/use_meta_refresh");
     gOptionStatusMessages = gaim_prefs_get_bool("/plugins/webgaim/use_status_messages");
     gOptionUsername = gaim_prefs_get_string("/plugins/webgaim/server_user");
     gOptionPassword = gaim_prefs_get_string("/plugins/webgaim/server_password");
     gOptionPort = gaim_prefs_get_string("/plugins/webgaim/server_port");
+    gOptionMetaRefreshSeconds = gaim_prefs_get_int("/plugins/webgaim/meta_refresh_seconds");
 }
 
 /**
@@ -611,6 +616,18 @@ static void client_write_header( webgaim_client_t * httpd, const char *update )
     client_write( httpd,"<html>\n");
     client_write( httpd," <head>\n");
     client_write( httpd,"  <meta http-equiv=\"Pragma\" content=\"no-cache\">\n");
+    if ( gOptionMetaRefresh )
+    {
+        // Only refresh on root, active, chat, and status pages
+        if( ( strcmp(update,"/") == 0 ) ||
+            ( strcmp(update,"/ActiveList") == 0 ) ||
+            ( strcmp(update,"/chat") == 0 ) ||
+            ( strstr(update,"/Status") != NULL ) )
+        {
+            snprintf(buffer,4096,"  <meta http-equiv=\"refresh\" content=\"%d\">\n",gOptionMetaRefreshSeconds);
+            client_write( httpd,buffer);
+        }
+    }
     client_write( httpd,"  <title>WebGaim</title>\n");
     client_write( httpd," </head>\n");
     client_write( httpd,"<body>\n");
@@ -658,15 +675,15 @@ static void webgaim_show_buddy(webgaim_client_t * httpd,const char * extra_html,
 
     if( buddy->alias )
     {
-        snprintf(buffer,4096,"&nbsp;&nbsp; <A HREF=chat?%s%s %s> %s</A>",time_stamp(),name,extra_html,buddy->alias);
+        snprintf(buffer,4096,"&nbsp;&nbsp; <A HREF=chat?%s%s %s>%s</A>",time_stamp(),name,extra_html,buddy->alias);
     }
     else if( buddy->server_alias )
     {
-        snprintf(buffer,4096,"&nbsp;&nbsp; <A HREF=chat?%s%s %s> %s</A>",time_stamp(),name,extra_html,buddy->server_alias);
+        snprintf(buffer,4096,"&nbsp;&nbsp; <A HREF=chat?%s%s %s>%s</A>",time_stamp(),name,extra_html,buddy->server_alias);
     }
     else
     {
-        snprintf(buffer,4096,"&nbsp;&nbsp;<A HREF=chat?%s%s %s> %s</A>",time_stamp(),name,extra_html,buddy->name);
+        snprintf(buffer,4096,"&nbsp;&nbsp;<A HREF=chat?%s%s %s>%s</A>",time_stamp(),name,extra_html,buddy->name);
     }
     g_free(name);
     client_write(httpd,buffer);
@@ -825,15 +842,15 @@ static void show_active_chats( webgaim_client_t * httpd, const char * except )
                 if( buddy->alias )
                 {
                     
-                    snprintf(buffer,4096,"&nbsp;(%d)&nbsp; <A HREF=chat?%s%s accesskey=\"%d\" %s> %s</A> [%d]<BR>\n",unread,time_stamp(),name,count,extra_html,buddy->alias,count);
+                    snprintf(buffer,4096,"&nbsp;(%d)&nbsp; <A HREF=chat?%s%s accesskey=\"%d\" %s>%s</A> [%d]<BR>\n",unread,time_stamp(),name,count,extra_html,buddy->alias,count);
                 }
                 else if( buddy->server_alias )
                 {
-                    snprintf(buffer,4096,"&nbsp;(%d)&nbsp; <A HREF=chat?%s%s accesskey=\"%d\" %s> %s</A> [%d]<BR>\n", unread,time_stamp(),name,count,extra_html,buddy->server_alias,count);
+                    snprintf(buffer,4096,"&nbsp;(%d)&nbsp; <A HREF=chat?%s%s accesskey=\"%d\" %s>%s</A> [%d]<BR>\n", unread,time_stamp(),name,count,extra_html,buddy->server_alias,count);
                 }
                 else
                 {
-                    snprintf(buffer,4096,"&nbsp;(%d)&nbsp;<A HREF=chat?%s%s accesskey=\"%d\" %s> %s</A> [%d]<BR>\n",unread,time_stamp(),name,count,extra_html,buddy->name,count);
+                    snprintf(buffer,4096,"&nbsp;(%d)&nbsp;<A HREF=chat?%s%s accesskey=\"%d\" %s>%s</A> [%d]<BR>\n",unread,time_stamp(),name,count,extra_html,buddy->name,count);
                 }
                 g_free( name );
                 client_write(httpd,buffer);
@@ -879,9 +896,9 @@ static unsigned webgaim_get_param_bool( const char *data, const char * param )
 {
     char *key = NULL;
     char search[255];
-    snprintf(search,255,"%s=",param); /// in forms the = allways follows mnaking this key unique
+    snprintf(search,255,"%s=",param); /// in forms, the = always follows making this key unique
 
-    /// If a for object has the named key then we are indeed selected
+    /// If a form object has the named key then we are indeed selected
     key = strstr(data, search );
     if( ! key )
         return 0;
@@ -900,13 +917,15 @@ static int action_options( webgaim_client_t * httpd, const char * extra )
         ///
         /// Parse the options we just got in
         ///
-        /// Bool Prefs:   use_color,use_bold_names,use_www_frames, use_status_messages
-        /// String Prefs: server_user,server_password, server_port
+        /// Bool Prefs:   use_color,use_bold_names,use_www_frames,use_status_messages,use_meta_refresh
+        /// String Prefs: server_user,server_password,server_port
+        /// Int Prefs:    meta_refresh_seconds
         ///
         webgaim_save_pref_bool( "use_color",          webgaim_get_param_bool( extra,"use_color") );
         webgaim_save_pref_bool( "use_bold_names",     webgaim_get_param_bool( extra,"use_bold_names") );
         webgaim_save_pref_bool( "use_status_messages",webgaim_get_param_bool( extra,"use_status_messages") );
         webgaim_save_pref_bool( "use_www_frames",     webgaim_get_param_bool( extra,"use_www_frames") );
+        webgaim_save_pref_bool( "use_meta_refresh",   webgaim_get_param_bool( extra,"use_meta_refresh") );
         webgaim_load_pref();
         return action_root(httpd,NULL); // return to root page after preferences saved & reloaded
     }
@@ -936,6 +955,8 @@ static int action_options( webgaim_client_t * httpd, const char * extra )
     snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=use_www_frames %s>Enable Frames<BR>\n",gOptionWWWFrames ? "checked" : "");
     client_write(httpd,buffer);
 
+    snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=use_meta_refresh %s>Auto-refresh  list/status<BR>\n",gOptionMetaRefresh ? "checked" : "");
+    client_write(httpd,buffer);
 
     client_write(httpd,"<BR>\n");
     client_write(httpd,"&nbsp;&nbsp;<input type=submit name=submit value=Save>\n");
@@ -1952,6 +1973,11 @@ static void type_toggle_cb(GtkWidget *widget, gpointer data)
         gOptionWWWFrames = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
         webgaim_save_pref_bool( (char*)data, gOptionWWWFrames );
     }
+    else if( strcmp(data,"use_meta_refresh") == 0  )
+    {
+        gOptionMetaRefresh = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+        webgaim_save_pref_bool( (char*)data, gOptionMetaRefresh );
+    }
 }
 
 static gboolean options_entry_cb(GtkWidget *widget, GdkEventFocus *evt, gpointer data)
@@ -1967,6 +1993,9 @@ static gboolean options_entry_cb(GtkWidget *widget, GdkEventFocus *evt, gpointer
     }
     else if (!strcmp(data, "server_password")) {
         gaim_prefs_set_string("/plugins/webgaim/server_password", gtk_entry_get_text(GTK_ENTRY(widget)));
+    }
+    else if (!strcmp(data, "meta_refresh_seconds")) {
+        gaim_prefs_set_string("/plugins/webgaim/meta_refresh_seconds", gtk_entry_get_text(GTK_ENTRY(widget)));
     }
     else
     {
@@ -1984,6 +2013,8 @@ static GtkWidget * get_config_frame(GaimPlugin *plugin)
     GtkWidget *vbox = NULL;
     GtkWidget *entry = NULL;
     GtkWidget *toggle = NULL;
+    GtkWidget *spin_button = NULL;
+	GtkSizeGroup *sg;
 
     ret = gtk_vbox_new(FALSE, 18);
     gtk_container_set_border_width(GTK_CONTAINER (ret), 12);
@@ -2052,6 +2083,21 @@ static GtkWidget * get_config_frame(GaimPlugin *plugin)
     g_signal_connect(G_OBJECT(toggle), "toggled",
                          G_CALLBACK(type_toggle_cb), "use_www_frames");
 
+    toggle = gtk_check_button_new_with_mnemonic(_("Auto-refresh buddy list/status"));
+    gtk_box_pack_start(GTK_BOX(vbox), toggle, FALSE, FALSE, 0);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(toggle),
+                                     gaim_prefs_get_bool("/plugins/webgaim/use_meta_refresh"));
+    g_signal_connect(G_OBJECT(toggle), "toggled",
+                         G_CALLBACK(type_toggle_cb), "use_meta_refresh");
+
+	sg = gtk_size_group_new(GTK_SIZE_GROUP_HORIZONTAL);
+	spin_button = gaim_gtk_prefs_labeled_spin_button(vbox, _("_Seconds:"),
+			"/plugins/webgaim/meta_refresh_seconds", 1, 3600, sg);
+	if (!gaim_prefs_get_bool("/plugins/webgaim/use_meta_refresh"))
+		gtk_widget_set_sensitive(GTK_WIDGET(spin_button), FALSE);
+	g_signal_connect(G_OBJECT(toggle), "clicked",
+					 G_CALLBACK(gaim_gtk_toggle_sensitive), spin_button);
+
 
     gtk_widget_show_all(ret);
     return ret;
@@ -2106,6 +2152,8 @@ static void init_plugin(GaimPlugin *plugin)
     gaim_prefs_add_bool("/plugins/webgaim/use_bold_names", 1);
     gaim_prefs_add_bool("/plugins/webgaim/use_status_messages", 1);
     gaim_prefs_add_bool("/plugins/webgaim/use_www_frames", 0);
+    gaim_prefs_add_bool("/plugins/webgaim/use_meta_refresh", 0);
+     gaim_prefs_add_int("/plugins/webgaim/meta_refresh_seconds", 180);
 }
 
 GAIM_INIT_PLUGIN(WebGaim, init_plugin, info)
