@@ -112,7 +112,6 @@ static char  *license = "\
  *   - Configuration panel for plugin sets username/password
  *
  * Known Broken:
- *   - Sometimes crashes when Gaim is shutting down
  *   - Account/Login takes a few seconds, so those buddies don't show up right away (requires refresh)
  *   - webforms mangle things.  We may not unmangle everything correctly yet
  *
@@ -138,7 +137,6 @@ static char  *license = "\
  *   - Status page
  *   - error handling 
  *   - Support for chat and chat room
- *   - Follow gaim buddy groups 
  *   - closing/ending im/chats
  *   - Requests?
  */
@@ -175,7 +173,7 @@ static char  *license = "\
 /// Hardcode the port # for now
 const char * gOptionUsername = NULL;
 const char * gOptionPassword = NULL;
-const char * gOptionPort = NULL;
+const char *  gOptionPort = NULL;
 static unsigned uOptionTrim = 100; // trim after 100 messages
 static gboolean gOptionUseColor = 1;
 static gboolean gOptionBoldNames = 1;
@@ -298,6 +296,15 @@ static void webgaim_save_pref_bool( const char * pref, unsigned enabled )
     gaim_prefs_set_bool(gcPref, enabled);
     gaim_debug_info("WebGaim 2","Saved-Pref: %s = [%d]\n",pref, enabled);
 }
+
+static void webgaim_save_pref_int( const char * pref, int value )
+{
+    gchar gcPref[256];
+    g_snprintf(gcPref, sizeof(gcPref), "/plugins/webgaim/%s",  pref );
+    gaim_prefs_set_int(gcPref, value );
+    gaim_debug_info("WebGaim 2","Saved-Pref: %s = [%d]\n",pref, value);
+}
+
 
 /**
  * @brief find the chat instance for this buddy 
@@ -907,12 +914,35 @@ static unsigned webgaim_get_param_bool( const char *data, const char * param )
     return 1;
 }
 
+static int webgaim_get_param_int( const char *data, const char * param )
+{
+    char *key = NULL;
+    char search[255];
+    int value = 0;
+    snprintf(search,255,"%s=",param); /// in forms, the = always follows making this key unique
+
+    /// If a form object has the named key then we are indeed selected
+    key = strstr(data, search );
+    if( ! key )
+        return 0;
+
+    snprintf(search,255,"%s=%%d&",param); /// in forms, the = always follows making this key unique
+    if( sscanf(key,search,&value) != 1)
+        return 0;
+
+    gaim_debug_info("WebGaim 2","search=[%s] in=[%s] value=[%d]\n",search,key,value);
+
+    return value;
+}
+
+
 static int action_options( webgaim_client_t * httpd, const char * extra )
 {
     char buffer[1024];
 
     if( extra != NULL && (strlen(extra) > 0 ) )
     {
+        int value;
         //client_write(httpd,"Extra:");
         //client_write(httpd,extra);
         ///
@@ -927,6 +957,12 @@ static int action_options( webgaim_client_t * httpd, const char * extra )
         webgaim_save_pref_bool( "use_status_messages",webgaim_get_param_bool( extra,"use_status_messages") );
         webgaim_save_pref_bool( "use_www_frames",     webgaim_get_param_bool( extra,"use_www_frames") );
         webgaim_save_pref_bool( "use_meta_refresh",   webgaim_get_param_bool( extra,"use_meta_refresh") );
+
+        value = webgaim_get_param_int( extra,"meta_refresh_seconds");
+        if( value >=1 && value <= 3600 )
+        {
+            webgaim_save_pref_int( "meta_refresh_seconds", value );
+        }
         webgaim_load_pref();
         return action_root(httpd,NULL); // return to root page after preferences saved & reloaded
     }
@@ -958,6 +994,10 @@ static int action_options( webgaim_client_t * httpd, const char * extra )
 
     snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=use_meta_refresh %s>Auto-refresh  list/status<BR>\n",gOptionMetaRefresh ? "checked" : "");
     client_write(httpd,buffer);
+
+    snprintf(buffer,1024,"&nbsp;&nbsp;&nbsp;&nbsp;Seconds: <input type=text value=\"%d\" size=4 maxlength=4 name=meta_refresh_seconds><BR>\n",gOptionMetaRefreshSeconds);
+    client_write(httpd,buffer);
+
 
     client_write(httpd,"<BR>\n");
     client_write(httpd,"&nbsp;&nbsp;<input type=submit name=submit value=Save>\n");
@@ -1879,12 +1919,11 @@ static void httpd_restart(webgaim_data_t * webgaim)
 
     if( gOptionPort )
     {
-        if( sscanf(gOptionPort,"%u",&usListenPort) != 1 )
+        if( sscanf(gOptionPort,"%d",&usListenPort) != 1 )
         {
             usListenPort = webgaim->usListenPort;
         }
     }
-
 
     if( usListenPort != webgaim->usListenPort )
     {
@@ -1909,7 +1948,7 @@ static void httpd_restart(webgaim_data_t * webgaim)
     }
     else
     {
-        gaim_debug(GAIM_DEBUG_INFO, "WebGaim 2", "Load::Port change not required\n");
+        gaim_debug(GAIM_DEBUG_INFO, "WebGaim 2", "Load::Port change not required ( using=%d )\n", usListenPort );
     }
 
 }
@@ -1996,7 +2035,10 @@ static gboolean options_entry_cb(GtkWidget *widget, GdkEventFocus *evt, gpointer
         gaim_prefs_set_string("/plugins/webgaim/server_password", gtk_entry_get_text(GTK_ENTRY(widget)));
     }
     else if (!strcmp(data, "meta_refresh_seconds")) {
-        gaim_prefs_set_string("/plugins/webgaim/meta_refresh_seconds", gtk_entry_get_text(GTK_ENTRY(widget)));
+        int sec = 0;
+        const char * str = gtk_entry_get_text(GTK_ENTRY(widget));
+        sscanf( str,"%d",&sec);
+        webgaim_save_pref_int( (char*)data, sec );
     }
     else
     {
@@ -2154,7 +2196,7 @@ static void init_plugin(GaimPlugin *plugin)
     gaim_prefs_add_bool("/plugins/webgaim/use_status_messages", 1);
     gaim_prefs_add_bool("/plugins/webgaim/use_www_frames", 0);
     gaim_prefs_add_bool("/plugins/webgaim/use_meta_refresh", 0);
-     gaim_prefs_add_int("/plugins/webgaim/meta_refresh_seconds", 180);
+    gaim_prefs_add_int("/plugins/webgaim/meta_refresh_seconds", 180);
 }
 
 GAIM_INIT_PLUGIN(WebGaim, init_plugin, info)
