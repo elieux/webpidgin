@@ -53,6 +53,9 @@ static char  *license = "\
  *       - Added Auto-Refresh with meta refresh tag
  *         + preference to enable/disable, set # seconds in plugin details
  *       - Status stub
+ *       - RSS Status feed available at http://<ip>:<port>/status.rss
+ *         + Compatible with Akregator
+ *         + Passes ( http://www.feedvalidator.org/ )
  *     2.0-B15
  *       - Added Basic History Code
  *       - Added Option for frames ( Active Buddy List In Frames )
@@ -181,7 +184,7 @@ static gboolean gOptionStatusMessages = 1;
 static gboolean gOptionWWWFrames = 0;
 static gboolean gOptionMetaRefresh = 0;
 static int gOptionMetaRefreshSeconds = 180; // refresh after 3 minutes (if enabled)
-
+static gboolean gOptionRSSFeed = 1;
 
 typedef struct{
     const char * name;
@@ -226,13 +229,25 @@ static webgaim_icon_t icons[] = {
  * @brief to a buddy, or received from a buddy.  This list may be auto-prunned
  * @brief Latest messages are always at the head of the list
  */
+
+typedef struct webgaim_chat_s webgaim_chat_t;
+typedef struct rss_item_s rss_item_t;
+typedef struct webgaim_conv_s webgaim_conv_t;
+
 struct webgaim_conv_s{
     struct webgaim_conv_s *prev; /** The previous message received */
     char * message;                  /** Message contents */
     int whom;                     /** Who originated this message: CONV_SOURCE_SELF | CONV_SOURCE_BUDDY */
     time_t tm;                     /** Time stamp of message */
+    unsigned id;
+    webgaim_chat_t *chat;
+    rss_item_t *rssItem;
 };
-typedef struct webgaim_conv_s webgaim_conv_t;
+
+struct rss_item_s{
+    struct rss_item_s *next;
+    webgaim_conv_t * conv;
+};
 
 /**
  * @brief a chat/im conversation list. Keeps tabs on active conversations
@@ -241,13 +256,15 @@ struct webgaim_chat_s{
     char * buddy;                /** The buddy whose conversation we're tracking */
     webgaim_conv_t * head;        /** The head of the messages list */
     unsigned unseen;             /** Count of unseen messages */
+    unsigned id;
     struct webgaim_chat_s *next;  /** link to the next chat/conv session */
 };
 
-typedef struct webgaim_chat_s webgaim_chat_t;
+
 
 static const char *empty_string ="";
-static webgaim_chat_t head = { NULL,NULL,0,NULL };
+static webgaim_chat_t head = { NULL,NULL,0,0,NULL };
+static rss_item_t rssHead = { NULL, NULL };
 
 /// Workaround for buggy gcc warning re: strftime (http://www.die.net/doc/linux/man/man3/strftime.3.html)
 static size_t webgaim_strftime(char *s, size_t max, const char *fmt, const struct tm *tm) 
@@ -303,6 +320,19 @@ static void webgaim_save_pref_int( const char * pref, int value )
     g_snprintf(gcPref, sizeof(gcPref), "/plugins/webgaim/%s",  pref );
     gaim_prefs_set_int(gcPref, value );
     gaim_debug_info("WebGaim 2","Saved-Pref: %s = [%d]\n",pref, value);
+}
+
+static void rss_item_add( webgaim_conv_t * conv )
+{
+    rss_item_t * rssItem = NULL;
+    rssItem = g_malloc( sizeof(webgaim_conv_t) );
+    if(! rssItem )
+        return;
+
+    rssItem->conv   = conv;
+    rssItem->next = rssHead.next;
+    rssHead.next = rssItem;
+    conv->rssItem = rssItem;
 }
 
 
@@ -361,12 +391,22 @@ static webgaim_chat_t * chat_add( const char * buddy, int whom, const char * dat
     if( !conv )
         return NULL;
 
+    gaim_debug_info("WebGaim 2","chat_add[%s]\n",data);
+
     conv->message = strdup( data );
     conv->whom = whom;
     conv->prev = chat->head;
     conv->tm = time(NULL);
+    conv->id = head.id++;
+    conv->chat = chat;
     chat->head = conv;
     chat->unseen++;
+
+    if( gOptionRSSFeed )
+    {
+        rss_item_add( conv );
+    }
+
     return chat;
 }
 
@@ -391,6 +431,7 @@ static void chat_trim(webgaim_chat_t * chat )
         do{
             next = conv->prev;
             free( conv->message );
+            conv->rssItem->conv = NULL;
             g_free( conv );
         }while( next );
     }
@@ -629,7 +670,7 @@ static void client_write_header( webgaim_client_t * httpd, const char *update )
         // Only refresh on root, active, chat, and status pages
         if( ( strcmp(update,"/") == 0 ) ||
             ( strcmp(update,"/ActiveList") == 0 ) ||
-            ( strcmp(update,"/chat") == 0 ) ||
+            ( strstr(update,"/chat") != NULL ) ||
             ( strstr(update,"/Status") != NULL ) )
         {
             snprintf(buffer,4096,"  <meta http-equiv=\"refresh\" content=\"%d\">\n",gOptionMetaRefreshSeconds);
@@ -1475,6 +1516,52 @@ static int action_status( webgaim_client_t * httpd, const char * unused )
     return 1;
 }
 
+static int action_rss( webgaim_client_t * httpd, const char * unused )
+{
+    rss_item_t *item = NULL;
+    char buffer[1024];
+
+    client_write( httpd,"");
+    client_write( httpd,"HTTP/1.1 200 OK\n");
+    client_write_date(httpd);
+    client_write( httpd,"Server: WebGaim\n");
+    client_write( httpd,"Connection: close\n");
+    client_write( httpd,"Content-type: application/rss+xml\n\n");
+//    client_write( httpd,"<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">\n");
+
+    client_write(httpd,"<?xml version=\"1.0\"?>\n");
+    client_write(httpd,"<rss version=\"2.0\">\n");
+    client_write(httpd," <channel>\n");
+    client_write(httpd,"  <title>WebGaim Status</title>\n");
+    client_write(httpd,"  <link>http://sourceforge.net/projects/webgaim/</link>\n");
+    client_write(httpd,"  <description>Webgaim Updates</description>\n");
+
+    for( item = rssHead.next; item != NULL; item = item->next )
+    {
+        if( ( item->conv != NULL ) && ( item->conv->whom != CONV_SOURCE_SELF ))
+        {
+            client_write(httpd,"  <item>\n");
+            snprintf(buffer,sizeof(buffer),"   <guid isPermaLink=\"false\">%d-%d</guid>\n",(int)item->conv->tm,item->conv->id);
+            client_write(httpd,buffer);
+            client_write(httpd,"   <title>");
+            snprintf(buffer,sizeof(buffer),"New Message From %s",item->conv->chat->buddy);
+            client_write(httpd,buffer);
+            client_write(httpd,"</title>\n");
+            //client_write(httpd,"   <link>http://localhost:5888/</link>\n");
+            //client_write(httpd,"<guid isPermaLink="true">http://www.engadget.com/2006/07/11/sling-opens-up-mac-slingplayer-beta/</guid>
+            client_write(httpd,"   <description>");
+            snprintf(buffer,sizeof(buffer),"%s",gaim_markup_strip_html(item->conv->message));
+            client_write(httpd,buffer);
+            client_write(httpd,"</description>\n");
+            client_write(httpd,"  </item>\n");
+        }
+    }
+    client_write(httpd," </channel>\n</rss>\n");
+    client_write( httpd,"\n\n");
+    return 1;
+}
+
+
 
 /**
  * @brief Action dispatcher  structure, matches the http-post request to
@@ -1492,7 +1579,8 @@ static webgaim_parse_t webgaim_actions[] = {
     { "/Options",action_options },
     { "/About",action_about },
     { "/history",action_history },
-    { "/Status",action_status }
+    { "/Status",action_status },
+    { "/status.rss",action_rss }
 };
 ///****************************************************************************************************///
 ///  WEBSERVER CODE:  The code below deals with the webserver micro engine
@@ -1732,6 +1820,7 @@ static int client_parse_and_dispatch(webgaim_client_t *httpd, char * buffer, con
             /// Now we can dispatch
             for(action=0; action< ( sizeof(webgaim_actions)/sizeof(webgaim_parse_t) ); action++ )
             {
+            gaim_debug_info("WebGaim 2","Actioon Compare [%s] <--> [%s]\n",purl,webgaim_actions[action].action);
                 if( strcmp(webgaim_actions[action].action,purl) == 0 )
                 {
                     return webgaim_actions[action].callback( httpd, data );
