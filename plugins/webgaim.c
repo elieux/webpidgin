@@ -1643,7 +1643,7 @@ static int action_help( webgaim_client_t * httpd, const char * unused )
     client_write(httpd,"<div style=\"margin-left: 20px;\">\n");
     client_write(httpd,"Copyright (C) 2006 Sebastian Sobolewski<BR>\n");
     client_write(httpd,"Additional Contributors:<BR>\n");
-    client_write(httpd,"&nbsp;&nbspDavid Morse<BR>\n");
+    client_write(httpd,"&nbsp;&nbsp;David Morse<BR>\n");
     client_write(httpd,"<BR>\n");
     client_write(httpd,"Webgaim Version: ");
     client_write(httpd,WEBGAIM_VERSION);
