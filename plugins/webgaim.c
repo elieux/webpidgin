@@ -45,6 +45,7 @@ static char  *license = "\
  *     TODO:
  *       - Colorize History Display
  *       - Add History Searching using regex?
+ *       - Make RSS feeds an option
  *
  *     2.0-BXX
  *       - Buddies in the WebGaim Buddy List will now be laid out in the
@@ -54,8 +55,8 @@ static char  *license = "\
  *         + preference to enable/disable, set # seconds in plugin details
  *       - Status stub
  *       - RSS Status feed available at http://<ip>:<port>/status.rss
- *         + Compatible with Akregator
- *         + Passes ( http://www.feedvalidator.org/ )
+ *         + Compatible with Akregator, Google
+ *         + Passes validation ( http://www.feedvalidator.org/ )
  *     2.0-B15
  *       - Added Basic History Code
  *       - Added Option for frames ( Active Buddy List In Frames )
@@ -732,7 +733,7 @@ static void webgaim_show_buddy(webgaim_client_t * httpd,const char * extra_html,
     }
     else
     {
-        snprintf(buffer,4096,"&nbsp;&nbsp;<A HREF=chat?%s%s %s>%s</A>",time_stamp(),name,extra_html,buddy->name);
+        snprintf(buffer,4096,"&nbsp;&nbsp; <A HREF=chat?%s%s %s>%s</A>",time_stamp(),name,extra_html,buddy->name);
     }
     g_free(name);
     client_write(httpd,buffer);
@@ -899,7 +900,7 @@ static void show_active_chats( webgaim_client_t * httpd, const char * except )
                 }
                 else
                 {
-                    snprintf(buffer,4096,"&nbsp;(%d)&nbsp;<A HREF=chat?%s%s accesskey=\"%d\" %s>%s</A> [%d]<BR>\n",unread,time_stamp(),name,count,extra_html,buddy->name,count);
+                    snprintf(buffer,4096,"&nbsp;(%d)&nbsp; <A HREF=chat?%s%s accesskey=\"%d\" %s>%s</A> [%d]<BR>\n",unread,time_stamp(),name,count,extra_html,buddy->name,count);
                 }
                 g_free( name );
                 client_write(httpd,buffer);
@@ -1519,6 +1520,7 @@ static int action_status( webgaim_client_t * httpd, const char * unused )
 static int action_rss( webgaim_client_t * httpd, const char * unused )
 {
     rss_item_t *item = NULL;
+	const char *my_addr = NULL;
     char buffer[1024];
 
     client_write( httpd,"");
@@ -1533,8 +1535,17 @@ static int action_rss( webgaim_client_t * httpd, const char * unused )
     client_write(httpd,"<rss version=\"2.0\">\n");
     client_write(httpd," <channel>\n");
     client_write(httpd,"  <title>WebGaim Status</title>\n");
-    client_write(httpd,"  <link>http://sourceforge.net/projects/webgaim/</link>\n");
-    client_write(httpd,"  <description>Webgaim Updates</description>\n");
+
+	my_addr = gaim_network_get_my_ip(-1);
+	if (my_addr != NULL)
+	{
+        snprintf(buffer,sizeof(buffer),"  <link>http://%s:%s/</link>\n",my_addr,gOptionPort);
+        client_write(httpd,buffer);
+    } else {
+        client_write(httpd,"  <link>http://sourceforge.net/projects/webgaim/</link>\n");
+    }
+
+    client_write(httpd,"  <description>WebGaim Updates</description>\n");
 
     for( item = rssHead.next; item != NULL; item = item->next )
     {
@@ -1547,8 +1558,13 @@ static int action_rss( webgaim_client_t * httpd, const char * unused )
             snprintf(buffer,sizeof(buffer),"New Message From %s",item->conv->chat->buddy);
             client_write(httpd,buffer);
             client_write(httpd,"</title>\n");
-            //client_write(httpd,"   <link>http://localhost:5888/</link>\n");
-            //client_write(httpd,"<guid isPermaLink="true">http://www.engadget.com/2006/07/11/sling-opens-up-mac-slingplayer-beta/</guid>
+        	if (my_addr != NULL)
+        	{
+                client_write(httpd,"   <link>");
+                snprintf(buffer,sizeof(buffer),"http://%s:%s/chat?%s",my_addr,gOptionPort,webgaim_encode(item->conv->chat->buddy));
+                client_write(httpd,buffer);
+                client_write(httpd,"</link>\n");
+            }
             client_write(httpd,"   <description>");
             snprintf(buffer,sizeof(buffer),"%s",gaim_markup_strip_html(item->conv->message));
             client_write(httpd,buffer);
