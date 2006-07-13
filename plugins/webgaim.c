@@ -10,20 +10,20 @@
  *
  ********************************************************************** */
 static char  *license = "\
-     This program is free software; you can redistribute it and/or \n \
-    modify it under the terms of the GNU General Public License as \n \
-    published by the Free Software Foundation; either version 2 of \n \
-    the License, or (at your option) any later version. \n \
- \n \
-    This program is distributed in the hope that it will be useful, \n \
-    but WITHOUT ANY WARRANTY; without even the implied warranty of \n \
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU \n \
-    General Public License for more details. \n \
- \n \
-    You should have received a copy of the GNU General Public \n \
-    License along with this program; if not, write to the Free \n \
-    Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, \n \
-    MA 02111-1307, USA. "; 
+    &nbsp;This program is free software; you can redistribute it and/or \
+    modify it under the terms of the GNU General Public License as \
+    published by the Free Software Foundation; either version 2 of \
+    the License, or (at your option) any later version. \
+ <BR><BR> \
+    This program is distributed in the hope that it will be useful, \
+    but WITHOUT ANY WARRANTY; without even the implied warranty of \
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU \
+    General Public License for more details. \
+ <BR><BR> \
+    You should have received a copy of the GNU General Public \
+    License along with this program; if not, write to the Free \
+    Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, \
+    MA 02111-1307, USA."; 
 
  /** ********************************************************************* 
  * Compiling:
@@ -45,8 +45,7 @@ static char  *license = "\
  *     TODO:
  *       - Colorize History Display
  *       - Add History Searching using regex?
- *       - Make RSS feeds an option
- *
+  *
  *     2.0-BXX
  *       - Buddies in the WebGaim Buddy List will now be laid out in the
  *          same manner as in Gaim, including Groups. ( Buddies->Sort Buddies )
@@ -57,6 +56,7 @@ static char  *license = "\
  *       - RSS Status feed available at http://<ip>:<port>/status.rss
  *         + Compatible with Akregator, Google
  *         + Passes validation ( http://www.feedvalidator.org/ )
+ *         + Toggle through Plugin Options
  *     2.0-B15
  *       - Added Basic History Code
  *       - Added Option for frames ( Active Buddy List In Frames )
@@ -123,14 +123,14 @@ static char  *license = "\
  *  The "CMD:" bar.
  *    U = Update/Refresh Current View
  *    H = Home Takes you to the root page 
- *    B = Buddy List ( Unfiltered )
- *    O = Options ( takes you Home at the moment )
+ *    A = Account Login/Logout
+ *    O = Options 
+ *    ? = Help 
  *
  * Home Page:
  *   Active: Lists all active conversations ( IE ones that have new text in them )
- *   Online: Lists All online buddies
- *   Accounts: Any accounts you have set up 
- *             + Allows you to login and log out
+ *   When Frames are enabled, the left frame contains the buddy list and Active Chat list
+ *       Only the Left Frame will be auto updated/refreshed
  *
  * Chatting:
  *   If you click on a Online or Active buddy the chat page will show up 
@@ -138,11 +138,11 @@ static char  *license = "\
  *   ( As a side effect it will also open a gaim window on the PC running gaim )
  *
  * Things I'm working on:
- *   - Status page
  *   - error handling 
  *   - Support for chat and chat room
  *   - closing/ending im/chats
  *   - Requests?
+ *
  */
 #include "internal.h"
 #include "gtkgaim.h"
@@ -302,6 +302,7 @@ static void webgaim_load_pref()
     gOptionPassword = gaim_prefs_get_string("/plugins/webgaim/server_password");
     gOptionPort = gaim_prefs_get_string("/plugins/webgaim/server_port");
     gOptionMetaRefreshSeconds = gaim_prefs_get_int("/plugins/webgaim/meta_refresh_seconds");
+    gOptionRSSFeed = gaim_prefs_get_bool("/plugins/webgaim/use_rss_feed");
 }
 
 /**
@@ -401,7 +402,8 @@ static webgaim_chat_t * chat_add( const char * buddy, int whom, const char * dat
     conv->id = head.id++;
     conv->chat = chat;
     chat->head = conv;
-    chat->unseen++;
+    if( whom == CONV_SOURCE_BUDDY )
+        chat->unseen++;
 
     if( gOptionRSSFeed )
     {
@@ -671,7 +673,8 @@ static void client_write_header( webgaim_client_t * httpd, const char *update )
         // Only refresh on root, active, chat, and status pages
         if( ( strcmp(update,"/") == 0 ) ||
             ( strcmp(update,"/ActiveList") == 0 ) ||
-            ( strstr(update,"/chat") != NULL ) ||
+            //We don't want chat auto refreshing when using frames
+            ( ( strstr(update,"/chat") != NULL ) && ( gOptionWWWFrames == 0 ) ) || 
             ( strstr(update,"/Status") != NULL ) )
         {
             snprintf(buffer,4096,"  <meta http-equiv=\"refresh\" content=\"%d\">\n",gOptionMetaRefreshSeconds);
@@ -680,7 +683,6 @@ static void client_write_header( webgaim_client_t * httpd, const char *update )
     }
     client_write( httpd,"  <title>WebGaim</title>\n");
     client_write( httpd," </head>\n");
-    client_write( httpd,"<body>\n");
 
     //
     //  If we Are In Frames We Behave Differently!!
@@ -689,10 +691,12 @@ static void client_write_header( webgaim_client_t * httpd, const char *update )
     {
         if( ( strcmp(update,"/") == 0 ) || ( strcmp(update,"/ActiveList") == 0 ) )
         {
-            snprintf(buffer,4096,"CMD: <A HREF=%s target=\"list\">U</A> | <A HREF=/Accounts target=\"conv\">A</A> | <A HREF=/Options target=\"conv\">O</A> | <A HREF=/About target=\"conv\">?</A><HR>\n",update);
+            client_write( httpd,"<body bgcolor=#EEEEEE>\n");
+            snprintf(buffer,4096,"CMD: <A HREF=%s target=\"list\">U</A> | <A HREF=/Accounts target=\"conv\">A</A> | <A HREF=/Options target=\"conv\">O</A> | <A HREF=/Help target=\"conv\">?</A><HR>\n",update);
         }
         else
         {
+            client_write( httpd,"<body>\n");
             snprintf(buffer,4096,"CMD: <A HREF=%s target=\"conv\">Update</A><HR> \n",update);
         }
     }
@@ -701,7 +705,8 @@ static void client_write_header( webgaim_client_t * httpd, const char *update )
         //
         // Not framed; use the "Normal Way"
         //
-        snprintf(buffer,4096,"CMD: <A HREF=%s>U</A> | <A HREF=/>H</A> | <A HREF=/Accounts>A</A> | <A HREF=/Options>O</A> | <A HREF=/About>?</A><HR>\n",update);
+        client_write( httpd,"<body>\n");
+        snprintf(buffer,4096,"CMD: <A HREF=%s>U</A> | <A HREF=/>H</A> | <A HREF=/Accounts>A</A> | <A HREF=/Options>O</A> | <A HREF=/Help>?</A><HR>\n",update);
     }
 
     client_write( httpd,buffer);
@@ -985,6 +990,7 @@ static int action_options( webgaim_client_t * httpd, const char * extra )
     if( extra != NULL && (strlen(extra) > 0 ) )
     {
         int value;
+
         //client_write(httpd,"Extra:");
         //client_write(httpd,extra);
         ///
@@ -999,12 +1005,14 @@ static int action_options( webgaim_client_t * httpd, const char * extra )
         webgaim_save_pref_bool( "use_status_messages",webgaim_get_param_bool( extra,"use_status_messages") );
         webgaim_save_pref_bool( "use_www_frames",     webgaim_get_param_bool( extra,"use_www_frames") );
         webgaim_save_pref_bool( "use_meta_refresh",   webgaim_get_param_bool( extra,"use_meta_refresh") );
+        webgaim_save_pref_bool( "use_rss_feed",   webgaim_get_param_bool( extra,"use_rss_feed") );
 
         value = webgaim_get_param_int( extra,"meta_refresh_seconds");
         if( value >=1 && value <= 3600 )
         {
             webgaim_save_pref_int( "meta_refresh_seconds", value );
         }
+
         webgaim_load_pref();
         return action_root(httpd,NULL); // return to root page after preferences saved & reloaded
     }
@@ -1038,6 +1046,9 @@ static int action_options( webgaim_client_t * httpd, const char * extra )
     client_write(httpd,buffer);
 
     snprintf(buffer,1024,"&nbsp;&nbsp;&nbsp;&nbsp;Seconds: <input type=text value=\"%d\" size=4 maxlength=4 name=meta_refresh_seconds><BR>\n",gOptionMetaRefreshSeconds);
+    client_write(httpd,buffer);
+
+    snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=use_rss_feed %s>Enable RSS Feed<BR>\n",gOptionRSSFeed ? "checked" : "");
     client_write(httpd,buffer);
 
 
@@ -1111,9 +1122,9 @@ static int action_root( webgaim_client_t * httpd, const char * notused )
         client_write( httpd,"  <title>WebGaim</title>\n");
         client_write( httpd,"  <noframes><body>Your browser can not handle frames.<BR>\n");
         client_write( httpd,"  Please <A HREF=/Options>click here</A> and uncheck Enable Frames</body></noframes>\n");
-        client_write( httpd,"   <FRAMESET COLS=\"150, *\" BORDER=0 ID=fs1>");
-        client_write( httpd,"    <FRAME SRC=\"/ActiveList\" NORESIZE NAME=\"list\">");
-        client_write( httpd,"    <FRAME SRC=\"/Status\" NORESIZE NAME=\"conv\">");
+        client_write( httpd,"   <FRAMESET COLS=\"160, *\" BORDER=1 ID=fs1>");
+        client_write( httpd,"    <FRAME SRC=\"/ActiveList\" NAME=\"list\">");
+        client_write( httpd,"    <FRAME SRC=\"/Status\" NAME=\"conv\">");
         client_write( httpd,"   </FRAMESET>");
         client_write( httpd," </head>\n");
         client_write( httpd,"</html>\n");
@@ -1248,9 +1259,9 @@ static int action_chat( webgaim_client_t * httpd, const char * extra )
     /// Now our web form for the chat
     client_write(httpd,"<form method=\"get\" action=\"/send?\">\n");
     client_write(httpd,"<div>\n");
-    snprintf(buffer,1024,"<input style=\"-wap-input-format: *m\" name=\"%s\" size=64/>\n",name);
+    snprintf(buffer,1024,"<input style=\"-wap-input-format: *m\" name=\"%s\" tabindex=1 size=48 maxlength=128/>\n",name);
     client_write(httpd,buffer);
-    client_write(httpd,"<input type=\"submit\" value=\"send\"/>\n");
+    client_write(httpd,"<input type=\"submit\" value=\"send\" tabindex=2/>\n");
     client_write(httpd,"</div>\n");
     client_write(httpd,"</form>\n");
 
@@ -1498,21 +1509,32 @@ static int action_history( webgaim_client_t * httpd, const char * extra )
 static int action_status( webgaim_client_t * httpd, const char * unused )
 {
     char buffer[1024];
-
+    const char * my_addr = NULL;
     snprintf(buffer,1024,"/Status?%s",time_stamp());
     client_write_header( httpd,buffer);
 
     client_write(httpd,"WebGaim Version: ");
     client_write(httpd,WEBGAIM_VERSION);
-    client_write(httpd,"<BR>\n");
-    
+    client_write(httpd,"<BR><BR>\n");
+
+    my_addr = gaim_network_get_local_system_ip(httpd->fd);
+    snprintf(buffer,1024,"System IP: %s<BR>\n", my_addr? my_addr : "N/A" );
+    client_write(httpd,buffer);
+
+    my_addr = gaim_network_get_my_ip(-1);
+    snprintf(buffer,1024,"Public IP: %s<BR>\n", my_addr? my_addr : "N/A" );
+    client_write(httpd,buffer);
+
+    snprintf(buffer,1024,"RSS Feed: %s<BR>\n",gOptionRSSFeed ? "Enabled" : "Disabled");
+    client_write(httpd,buffer);
+
+    client_write(httpd,"<HR>\n");
     //More stuff here like, e-mail notices etc
     //client_write(httpd,"<B>New E-Mail:</B>");
     //client_write(httpd,"Updates");
     strcpy(buffer,"");
     show_active_chats( httpd, buffer );
 
-    client_write(httpd,"<BR> Status Information Goes Here<BR>");
     client_write_tail( httpd );
     return 1;
 }
@@ -1522,6 +1544,14 @@ static int action_rss( webgaim_client_t * httpd, const char * unused )
     rss_item_t *item = NULL;
 	const char *my_addr = NULL;
     char buffer[1024];
+
+    if( gOptionRSSFeed == 0 )
+    {
+        client_write_header( httpd,"/status.rss");
+        client_write(httpd,"<B>RSS Feed is Disabled</B>\n");
+        client_write_tail(httpd);
+        return 1;
+    }
 
     client_write( httpd,"");
     client_write( httpd,"HTTP/1.1 200 OK\n");
@@ -1586,6 +1616,49 @@ static int action_rss( webgaim_client_t * httpd, const char * unused )
     return 1;
 }
 
+static int action_help( webgaim_client_t * httpd, const char * unused )
+{
+    const char * my_addr = NULL;
+    char buffer[1024];
+    snprintf(buffer,1024,"/Help?%s",time_stamp());
+    client_write_header( httpd,buffer);
+    client_write(httpd,"<B>Help:</B><BR><BR>\n");
+    
+    client_write(httpd,"1. <B>RSS Feed</B>\n");
+    client_write(httpd,"<div style=\"margin-left: 20px;\">\n");
+    my_addr = gaim_network_get_my_ip(-1);
+
+    snprintf(buffer,1024,"When Enabled the RSS feed is available at http://%s:%s/status.rss<BR>\n", my_addr ? my_addr : "localhost", gOptionPort);
+    client_write(httpd,buffer);
+    client_write(httpd,"If your gaim client is behind a NAT/PAT firewall you may need to manually set the external <B>internet</b> address of the firewall in the gaim Tools:Preferences:Network:Public IP dialog and forward the webgaim port to the internal address.<BR><BR>");
+    client_write(httpd,"Example<BR>\n");
+    client_write(httpd,"&nbsp;&nbsp;Firewall IP: 64.23.12.12<BR>\n");
+    client_write(httpd,"&nbsp;&nbsp;GAIM/Webgaim PC IP: 10.0.0.1<BR>\n");
+    client_write(httpd,"&nbsp;&nbsp;GAIM/Webgaim PC Port: 5888<BR>\n");
+    client_write(httpd,"<BR>\n");
+    client_write(httpd,"In this configuration you should set the GAIM <B>Public IP</b> to 64.23.12.12 and your Firewall should port forward TCP port 5888 to IP 10.0.0.1<BR>\n");
+    client_write(httpd,"</div><BR>\n");
+
+    client_write(httpd,"2. <B>Credits</B>\n");
+    client_write(httpd,"<div style=\"margin-left: 20px;\">\n");
+    client_write(httpd,"Copyright (C) 2006 Sebastian Sobolewski<BR>\n");
+    client_write(httpd,"Additional Contributors:<BR>\n");
+    client_write(httpd,"&nbsp;&nbspDavid Morse<BR>\n");
+    client_write(httpd,"<BR>\n");
+    client_write(httpd,"Webgaim Version: ");
+    client_write(httpd,WEBGAIM_VERSION);
+    client_write(httpd,"<BR>\n");
+    client_write(httpd,"<A HREF=http://www.thirdmartini.com/index.php/WebGaim_2.x>WebGaim Home Page</A><BR>\n");
+    client_write(httpd,"</div><BR>\n");
+
+    client_write(httpd,"3. <B>License</B>\n");
+    client_write(httpd,"<div style=\"margin-left: 20px;\">\n");
+    client_write(httpd,license);
+    client_write(httpd,"</div><BR>\n");
+
+    client_write_tail( httpd );
+    return 1;
+}
 
 
 /**
@@ -1605,7 +1678,8 @@ static webgaim_parse_t webgaim_actions[] = {
     { "/About",action_about },
     { "/history",action_history },
     { "/Status",action_status },
-    { "/status.rss",action_rss }
+    { "/status.rss",action_rss },
+    { "/Help", action_help }
 };
 ///****************************************************************************************************///
 ///  WEBSERVER CODE:  The code below deals with the webserver micro engine
@@ -2132,6 +2206,12 @@ static void type_toggle_cb(GtkWidget *widget, gpointer data)
         gOptionMetaRefresh = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
         webgaim_save_pref_bool( (char*)data, gOptionMetaRefresh );
     }
+    else if( strcmp(data,"use_rss_feed") == 0  )
+    {
+        gOptionRSSFeed = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+        webgaim_save_pref_bool( (char*)data, gOptionMetaRefresh );
+    }
+
 }
 
 static gboolean options_entry_cb(GtkWidget *widget, GdkEventFocus *evt, gpointer data)
@@ -2255,6 +2335,12 @@ static GtkWidget * get_config_frame(GaimPlugin *plugin)
 	g_signal_connect(G_OBJECT(toggle), "clicked",
 					 G_CALLBACK(gaim_gtk_toggle_sensitive), spin_button);
 
+    toggle = gtk_check_button_new_with_mnemonic(_("Enable RSS Feed"));
+    gtk_box_pack_start(GTK_BOX(vbox), toggle, FALSE, FALSE, 0);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(toggle),
+                                     gaim_prefs_get_bool("/plugins/webgaim/use_rss_feed"));
+    g_signal_connect(G_OBJECT(toggle), "toggled",
+                         G_CALLBACK(type_toggle_cb), "use_rss_feed");
 
     gtk_widget_show_all(ret);
     return ret;
@@ -2311,6 +2397,7 @@ static void init_plugin(GaimPlugin *plugin)
     gaim_prefs_add_bool("/plugins/webgaim/use_www_frames", 0);
     gaim_prefs_add_bool("/plugins/webgaim/use_meta_refresh", 0);
     gaim_prefs_add_int("/plugins/webgaim/meta_refresh_seconds", 180);
+    gaim_prefs_add_bool("/plugins/webgaim/use_rss_feed", 1);
 }
 
 GAIM_INIT_PLUGIN(WebGaim, init_plugin, info)
