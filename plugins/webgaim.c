@@ -1315,7 +1315,11 @@ static int action_chat( webgaim_client_t * httpd, const char * extra )
 
             }
             client_write(httpd,":&nbsp;"); /// Add a space, otherwise things blend in to much
-            client_write(httpd,gaim_markup_strip_html(conv->message));
+            {
+                char * tmpstr = gaim_markup_strip_html(conv->message);
+                client_write(httpd,tmpstr);
+                g_free(tmpstr);
+            }
             client_write(httpd,"<BR>\n");
         }
         chat->unseen=0;
@@ -1539,6 +1543,42 @@ static int action_status( webgaim_client_t * httpd, const char * unused )
     return 1;
 }
 
+/**
+ * @brief strip out all elements and illegal character from the message
+ * @brief so that it confirms to the RSS specification
+ * @param msg the old message
+ * @returns the striped message ( it must be freed )
+ */
+static char * webgaim_rss_strip_html( char * msg )
+{
+    char * tmp = gaim_markup_strip_html( msg );
+    if( tmp )
+    {
+        /// We first used gaim's internal stip mechanism
+        /// now we postsrtip everything else
+        unsigned i;
+        unsigned cur = 0;
+        unsigned len = strlen(tmp);
+        for( i = 0; i < len ; i++ )
+        {
+            switch( tmp[i] ){
+                case '<' :
+                case '>' :
+                break;
+
+                default:
+                    if( cur != i )
+                        tmp[cur] = tmp[i];
+                    cur++;
+                break;
+            };
+        }
+
+        tmp[cur] = '\0';
+    }
+    return tmp;
+}
+
 static int action_rss( webgaim_client_t * httpd, const char * unused )
 {
     rss_item_t *item = NULL;
@@ -1559,7 +1599,6 @@ static int action_rss( webgaim_client_t * httpd, const char * unused )
     client_write( httpd,"Server: WebGaim\n");
     client_write( httpd,"Connection: close\n");
     client_write( httpd,"Content-type: application/rss+xml\n\n");
-//    client_write( httpd,"<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">\n");
 
     client_write(httpd,"<?xml version=\"1.0\"?>\n");
     client_write(httpd,"<rss version=\"2.0\">\n");
@@ -1590,13 +1629,21 @@ static int action_rss( webgaim_client_t * httpd, const char * unused )
             client_write(httpd,"</title>\n");
         	if (my_addr != NULL)
         	{
+                char * name = webgaim_encode(item->conv->chat->buddy);
                 client_write(httpd,"   <link>");
-                snprintf(buffer,sizeof(buffer),"http://%s:%s/chat?%s",my_addr,gOptionPort,webgaim_encode(item->conv->chat->buddy));
+                snprintf(buffer,sizeof(buffer),"http://%s:%s/chat?%s",my_addr,gOptionPort,name);
+                g_free(name);
                 client_write(httpd,buffer);
                 client_write(httpd,"</link>\n");
             }
             client_write(httpd,"   <description>");
-            snprintf(buffer,sizeof(buffer),"%s",gaim_markup_strip_html(item->conv->message));
+
+            {
+                char * tmpstr = webgaim_rss_strip_html(item->conv->message);
+                snprintf(buffer,sizeof(buffer),"%s",tmpstr);
+                g_free( tmpstr );
+            }
+
             client_write(httpd,buffer);
             client_write(httpd,"</description>\n");
 //          <pubDate>Wed, 12 Jul 2006 12:06:02 -0400</pubDate>
@@ -1918,7 +1965,7 @@ static int client_parse_and_dispatch(webgaim_client_t *httpd, char * buffer, con
             /// Now we can dispatch
             for(action=0; action< ( sizeof(webgaim_actions)/sizeof(webgaim_parse_t) ); action++ )
             {
-            gaim_debug_info("WebGaim 2","Actioon Compare [%s] <--> [%s]\n",purl,webgaim_actions[action].action);
+                gaim_debug_info("WebGaim 2","Actioon Compare [%s] <--> [%s]\n",purl,webgaim_actions[action].action);
                 if( strcmp(webgaim_actions[action].action,purl) == 0 )
                 {
                     return webgaim_actions[action].callback( httpd, data );
