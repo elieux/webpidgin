@@ -1599,15 +1599,14 @@ static int action_rss( webgaim_client_t * httpd, const char * unused )
             snprintf(buffer,sizeof(buffer),"%s",gaim_markup_strip_html(item->conv->message));
             client_write(httpd,buffer);
             client_write(httpd,"</description>\n");
-// TODO: <pubDate>Wed, 12 Jul 2006 12:06:02 -0400</pubDate> 
-//            client_write(httpd,"   <pubDate>");
-//            webgaim_strftime(buffer,sizeof(buffer),"%a, %d %b %Y %H:%M:%S %z" , localtime(&item->conv->tm) );
-            /// ^^^ FIXME: %z SHOULD return an RFC822 compliant timezone but doesn't (at least under Cygwin), i.e.
-            ///            "<pubDate>Wed, 12 Jul 2006 23:27:22 Central Standard Time</pubDate>" <-- should be CST
-            /// This causes RSS validation failure (http://www.feedvalidator.org/docs/error/InvalidRFC2822Date.html)
-            /// Any idea on how to fix?
-//            client_write(httpd, buffer);
-//            client_write(httpd,"</pubDate>\n");
+//          <pubDate>Wed, 12 Jul 2006 12:06:02 -0400</pubDate>
+            client_write(httpd,"   <pubDate>");
+            // set TZ to avoid problems with MinGW/newlib strftime for %z
+            putenv ("TZ=GMT");
+            tzset ();
+            webgaim_strftime(buffer,sizeof(buffer),"%a, %d %b %Y %H:%M:%S %z" , localtime(&item->conv->tm) );
+            client_write(httpd, buffer);
+            client_write(httpd,"</pubDate>\n");
             client_write(httpd,"  </item>\n");
         }
     }
