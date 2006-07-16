@@ -1646,19 +1646,19 @@ static int action_rss( webgaim_client_t * httpd, const char * unused )
 
             client_write(httpd,buffer);
             client_write(httpd,"</description>\n");
-//          <pubDate>Wed, 12 Jul 2006 12:06:02 -0400</pubDate>
-            client_write(httpd,"   <pubDate>");
+//            client_write(httpd,"   <pubDate>");
             // set TZ to avoid problems with MinGW/newlib strftime for %z
-            putenv ("TZ=GMT");
-            tzset ();
-            webgaim_strftime(buffer,sizeof(buffer),"%a, %d %b %Y %H:%M:%S %z" , localtime(&item->conv->tm) );
-            client_write(httpd, buffer);
-            client_write(httpd,"</pubDate>\n");
+            // FIXME: setting TZ to GMT then screws up Gaim's timestamps :-(
+//            putenv ("TZ=GMT");
+//            tzset ();
+//            webgaim_strftime(buffer,sizeof(buffer),"%a, %d %b %Y %H:%M:%S %z" , localtime(&item->conv->tm) );
+//            client_write(httpd, buffer);
+//            client_write(httpd,"</pubDate>\n");
             client_write(httpd,"  </item>\n");
         }
     }
     client_write(httpd," </channel>\n</rss>\n");
-    client_write( httpd,"\n\n");
+    client_write(httpd,"\n\n");
     return 1;
 }
 
@@ -1965,7 +1965,7 @@ static int client_parse_and_dispatch(webgaim_client_t *httpd, char * buffer, con
             /// Now we can dispatch
             for(action=0; action< ( sizeof(webgaim_actions)/sizeof(webgaim_parse_t) ); action++ )
             {
-                gaim_debug_info("WebGaim 2","Actioon Compare [%s] <--> [%s]\n",purl,webgaim_actions[action].action);
+            gaim_debug_info("WebGaim 2","Action Compare [%s] <--> [%s]\n",purl,webgaim_actions[action].action);
                 if( strcmp(webgaim_actions[action].action,purl) == 0 )
                 {
                     return webgaim_actions[action].callback( httpd, data );
