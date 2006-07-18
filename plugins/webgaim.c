@@ -599,7 +599,7 @@ static char * webgaim_encode( const char * object )
  */
 static char * webgaim_normalize( const char * message )
 {
-    char * normal = g_malloc( strlen(message)*2 );
+    char * normal = g_malloc( strlen(message)*2+1 );
     int idx;
     int current = 0;
     for( idx=0;idx<strlen(message);idx++)
