@@ -84,7 +84,7 @@ static char  *license = "\
  *     2.0-B10
  *       - Add a timestamp to all changable items to make sure browsers refetch the data
  *     2.0-B9
- *       - Buddies with spaces now work, for reall this time.
+ *       - Buddies with spaces now work, for real this time.
  *     2.0-B8
  *       - URL-ENCODE buddy names in post requests 
  *          - ( Buddies With Spaces and Odd characters should work )
@@ -154,6 +154,7 @@ static char  *license = "\
 #include "prefs.h"
 #include "signals.h"
 #include "version.h"
+#include "util.h"
 #include "debug.h"
 
 #include "gtkplugin.h"
@@ -266,12 +267,6 @@ struct webgaim_chat_s{
 static const char *empty_string ="";
 static webgaim_chat_t head = { NULL,NULL,0,0,NULL };
 static rss_item_t rssHead = { NULL, NULL };
-
-/// Workaround for buggy gcc warning re: strftime (http://www.die.net/doc/linux/man/man3/strftime.3.html)
-static size_t webgaim_strftime(char *s, size_t max, const char *fmt, const struct tm *tm) 
-{ 
-    return strftime(s, max, fmt, tm); 
-}
 
 /// Prototypes of functions, so they can be called before they're defined
 static void webgaim_save_pref_bool( const char * pref, unsigned enabled );
@@ -640,11 +635,20 @@ static void client_write( webgaim_client_t * httpd, const char *buffer )
 
 /**
  * @brief Get the current time and insert it into the client stream 
- * @note FIXME
  */
 static void client_write_date(webgaim_client_t * httpd)
 {
-    client_write(httpd,"Date: Sun, 21 Nov 2004 20:56:06 GMT\n"); 
+	const char *rfc822_time = NULL;
+
+    rfc822_time = gaim_utf8_strftime("Date: %a, %d %b %Y %H:%M:%S %z\n", NULL);
+    if (rfc822_time != NULL)
+    {
+        client_write(httpd, rfc822_time);
+    }
+    else
+    {
+        client_write(httpd,"Date: Sun, 21 Nov 2004 20:56:06 GMT\n"); 
+    }
 }
 
 /**
@@ -677,7 +681,7 @@ static void client_write_header( webgaim_client_t * httpd, const char *update )
             ( ( strstr(update,"/chat") != NULL ) && ( gOptionWWWFrames == 0 ) ) || 
             ( strstr(update,"/Status") != NULL ) )
         {
-            snprintf(buffer,4096,"  <meta http-equiv=\"refresh\" content=\"%d\">\n",gOptionMetaRefreshSeconds);
+            snprintf(buffer,sizeof(buffer),"  <meta http-equiv=\"refresh\" content=\"%d\">\n",gOptionMetaRefreshSeconds);
             client_write( httpd,buffer);
         }
     }
@@ -692,12 +696,12 @@ static void client_write_header( webgaim_client_t * httpd, const char *update )
         if( ( strcmp(update,"/") == 0 ) || ( strcmp(update,"/ActiveList") == 0 ) )
         {
             client_write( httpd,"<body bgcolor=#EEEEEE>\n");
-            snprintf(buffer,4096,"CMD: <A HREF=%s target=\"list\">U</A> | <A HREF=/Accounts target=\"conv\">A</A> | <A HREF=/Options target=\"conv\">O</A> | <A HREF=/Help target=\"conv\">?</A><HR>\n",update);
+            snprintf(buffer,sizeof(buffer),"CMD: <A HREF=%s target=\"list\">U</A> | <A HREF=/Accounts target=\"conv\">A</A> | <A HREF=/Options target=\"conv\">O</A> | <A HREF=/Help target=\"conv\">?</A><HR>\n",update);
         }
         else
         {
             client_write( httpd,"<body>\n");
-            snprintf(buffer,4096,"CMD: <A HREF=%s target=\"conv\">Update</A><HR> \n",update);
+            snprintf(buffer,sizeof(buffer),"CMD: <A HREF=%s target=\"conv\">Update</A><HR> \n",update);
         }
     }
     else
@@ -706,7 +710,7 @@ static void client_write_header( webgaim_client_t * httpd, const char *update )
         // Not framed; use the "Normal Way"
         //
         client_write( httpd,"<body>\n");
-        snprintf(buffer,4096,"CMD: <A HREF=%s>U</A> | <A HREF=/>H</A> | <A HREF=/Accounts>A</A> | <A HREF=/Options>O</A> | <A HREF=/Help>?</A><HR>\n",update);
+        snprintf(buffer,sizeof(buffer),"CMD: <A HREF=%s>U</A> | <A HREF=/>H</A> | <A HREF=/Accounts>A</A> | <A HREF=/Options>O</A> | <A HREF=/Help>?</A><HR>\n",update);
     }
 
     client_write( httpd,buffer);
@@ -730,15 +734,15 @@ static void webgaim_show_buddy(webgaim_client_t * httpd,const char * extra_html,
 
     if( buddy->alias )
     {
-        snprintf(buffer,4096,"&nbsp;&nbsp; <A HREF=chat?%s%s %s>%s</A>",time_stamp(),name,extra_html,buddy->alias);
+        snprintf(buffer,sizeof(buffer),"&nbsp;&nbsp; <A HREF=chat?%s%s %s>%s</A>",time_stamp(),name,extra_html,buddy->alias);
     }
     else if( buddy->server_alias )
     {
-        snprintf(buffer,4096,"&nbsp;&nbsp; <A HREF=chat?%s%s %s>%s</A>",time_stamp(),name,extra_html,buddy->server_alias);
+        snprintf(buffer,sizeof(buffer),"&nbsp;&nbsp; <A HREF=chat?%s%s %s>%s</A>",time_stamp(),name,extra_html,buddy->server_alias);
     }
     else
     {
-        snprintf(buffer,4096,"&nbsp;&nbsp; <A HREF=chat?%s%s %s>%s</A>",time_stamp(),name,extra_html,buddy->name);
+        snprintf(buffer,sizeof(buffer),"&nbsp;&nbsp; <A HREF=chat?%s%s %s>%s</A>",time_stamp(),name,extra_html,buddy->name);
     }
     g_free(name);
     client_write(httpd,buffer);
@@ -773,12 +777,12 @@ static void webgaim_show_buddy(webgaim_client_t * httpd,const char * extra_html,
             imin = ((t - idle_secs) / 60) % 60;
 
             if (ihrs)
-                snprintf(buffer,4096," (Idle %dh %02dm)", ihrs, imin);
+                snprintf(buffer,sizeof(buffer)," (Idle %dh %02dm)", ihrs, imin);
             else
-                snprintf(buffer,4096," (Idle %dm)", imin);
+                snprintf(buffer,sizeof(buffer)," (Idle %dm)", imin);
         }
         else
-            snprintf(buffer,4096," (Idle)");
+            snprintf(buffer,sizeof(buffer)," (Idle)");
 
         client_write(httpd,buffer);
     } else if (!gaim_presence_is_available(buddy->presence)) {
@@ -802,7 +806,7 @@ static void webgaim_buddy_list_walk( webgaim_client_t * httpd,const char * extra
             case GAIM_BLIST_GROUP_NODE:{
                 GtkTreeIter child;
                 GaimGroup *group = (GaimGroup*) node;
-                snprintf(buffer,4096,"<B>%s</B><BR>\n",group->name);
+                snprintf(buffer,sizeof(buffer),"<B>%s</B><BR>\n",group->name);
                 client_write(httpd,buffer);
 
                 if( gtk_tree_model_iter_children(model,&child,parent) )
@@ -815,7 +819,7 @@ static void webgaim_buddy_list_walk( webgaim_client_t * httpd,const char * extra
                 if ( contact->alias )
                 {
                     /// not sure yet
-                    //snprintf(buffer,4096,"<B>type=%d ( not sure )</B><BR>\n",node->type);
+                    //snprintf(buffer,sizeof(buffer),"<B>type=%d ( not sure )</B><BR>\n",node->type);
                     //client_write(httpd,buffer);
                 }
                 else
@@ -831,7 +835,7 @@ static void webgaim_buddy_list_walk( webgaim_client_t * httpd,const char * extra
             }break;
 
             default:
-                snprintf(buffer,4096,"<B>type=%ds</B><BR>\n",node->type);
+                snprintf(buffer,sizeof(buffer),"<B>type=%ds</B><BR>\n",node->type);
                 client_write(httpd,buffer);
             break;
         }
@@ -897,15 +901,15 @@ static void show_active_chats( webgaim_client_t * httpd, const char * except )
                 if( buddy->alias )
                 {
                     
-                    snprintf(buffer,4096,"&nbsp;(%d)&nbsp; <A HREF=chat?%s%s accesskey=\"%d\" %s>%s</A> [%d]<BR>\n",unread,time_stamp(),name,count,extra_html,buddy->alias,count);
+                    snprintf(buffer,sizeof(buffer),"&nbsp;(%d)&nbsp; <A HREF=chat?%s%s accesskey=\"%d\" %s>%s</A> [%d]<BR>\n",unread,time_stamp(),name,count,extra_html,buddy->alias,count);
                 }
                 else if( buddy->server_alias )
                 {
-                    snprintf(buffer,4096,"&nbsp;(%d)&nbsp; <A HREF=chat?%s%s accesskey=\"%d\" %s>%s</A> [%d]<BR>\n", unread,time_stamp(),name,count,extra_html,buddy->server_alias,count);
+                    snprintf(buffer,sizeof(buffer),"&nbsp;(%d)&nbsp; <A HREF=chat?%s%s accesskey=\"%d\" %s>%s</A> [%d]<BR>\n", unread,time_stamp(),name,count,extra_html,buddy->server_alias,count);
                 }
                 else
                 {
-                    snprintf(buffer,4096,"&nbsp;(%d)&nbsp; <A HREF=chat?%s%s accesskey=\"%d\" %s>%s</A> [%d]<BR>\n",unread,time_stamp(),name,count,extra_html,buddy->name,count);
+                    snprintf(buffer,sizeof(buffer),"&nbsp;(%d)&nbsp; <A HREF=chat?%s%s accesskey=\"%d\" %s>%s</A> [%d]<BR>\n",unread,time_stamp(),name,count,extra_html,buddy->name,count);
                 }
                 g_free( name );
                 client_write(httpd,buffer);
@@ -1088,7 +1092,7 @@ static int action_accounts( webgaim_client_t * httpd, const char * notused )
         if( gaim_account_is_connected( (GaimAccount*) account_iter->data ) )
         {
             gaim_debug_info("WebGaim 2","[%s] connected\n",display);
-            snprintf(buffer,4096,"&nbsp;<A HREF=logout?%s&%s target=\"_top\">(logout)</A> %s<BR>\n",
+            snprintf(buffer,sizeof(buffer),"&nbsp;<A HREF=logout?%s&%s target=\"_top\">(logout)</A> %s<BR>\n",
                                  encoded_user,proto,display);
 
             client_write(httpd,buffer);
@@ -1096,7 +1100,7 @@ static int action_accounts( webgaim_client_t * httpd, const char * notused )
         else
         {
             gaim_debug_info("WebGaim 2","[%s] disconnected\n",display);
-            snprintf(buffer,4096,"&nbsp;<A HREF=login?%s&%s target=\"_top\">(login)</A> %s<BR>\n",
+            snprintf(buffer,sizeof(buffer),"&nbsp;<A HREF=login?%s&%s target=\"_top\">(login)</A> %s<BR>\n",
                             encoded_user,proto,display);
             client_write( httpd,buffer);
         }
@@ -1485,8 +1489,8 @@ static int action_history( webgaim_client_t * httpd, const char * extra )
 
                 if( data )
                 {
-                    webgaim_strftime(buffer, 1024,"%c" , localtime(&gaimLog->time) );
-                    client_write(httpd, buffer);
+                    const char *timestamp = gaim_utf8_strftime("\n%H:%M", localtime(&gaimLog->time));
+                    client_write(httpd, timestamp);
                     client_write(httpd,"<PRE>\n");
                     client_write(httpd,data);
                     client_write(httpd,"</PRE>\n");
@@ -1583,6 +1587,7 @@ static int action_rss( webgaim_client_t * httpd, const char * unused )
 {
     rss_item_t *item = NULL;
 	const char *my_addr = NULL;
+	const char *rfc822_time = NULL;
     char buffer[1024];
 
     if( gOptionRSSFeed == 0 )
@@ -1618,6 +1623,24 @@ static int action_rss( webgaim_client_t * httpd, const char * unused )
 
     for( item = rssHead.next; item != NULL; item = item->next )
     {
+        if ( item == rssHead.next )
+        {
+            // Write a <pubDate> for the <channel> = the date the last IM was received
+            rfc822_time = gaim_utf8_strftime("%a, %d %b %Y %H:%M:%S %z", localtime(&item->conv->tm));
+            if (rfc822_time != NULL)
+            {
+                snprintf(buffer,sizeof(buffer),"  <pubDate>%s</pubDate>\n", rfc822_time);
+                client_write( httpd,buffer);
+            }
+
+            // Write a <lastBuildDate> = now, since we generate the feed on-the-fly
+            rfc822_time = gaim_utf8_strftime("%a, %d %b %Y %H:%M:%S %z", NULL);
+            if (rfc822_time != NULL)
+            {
+                snprintf(buffer,sizeof(buffer),"  <lastBuildDate>%s</lastBuildDate>\n", rfc822_time);
+                client_write( httpd,buffer);
+            }
+        }
         if( ( item->conv != NULL ) && ( item->conv->whom != CONV_SOURCE_SELF ))
         {
             client_write(httpd,"  <item>\n");
@@ -1646,14 +1669,12 @@ static int action_rss( webgaim_client_t * httpd, const char * unused )
 
             client_write(httpd,buffer);
             client_write(httpd,"</description>\n");
-//            client_write(httpd,"   <pubDate>");
-            // set TZ to avoid problems with MinGW/newlib strftime for %z
-            // FIXME: setting TZ to GMT then screws up Gaim's timestamps :-(
-//            putenv ("TZ=GMT");
-//            tzset ();
-//            webgaim_strftime(buffer,sizeof(buffer),"%a, %d %b %Y %H:%M:%S %z" , localtime(&item->conv->tm) );
-//            client_write(httpd, buffer);
-//            client_write(httpd,"</pubDate>\n");
+            rfc822_time = gaim_utf8_strftime("%a, %d %b %Y %H:%M:%S %z", localtime(&item->conv->tm));
+            if (rfc822_time != NULL)
+            {
+                snprintf(buffer,sizeof(buffer),"   <pubDate>%s</pubDate>\n", rfc822_time);
+                client_write( httpd,buffer);
+            }
             client_write(httpd,"  </item>\n");
         }
     }
@@ -2027,7 +2048,7 @@ static void client_request_cb(gpointer data, gint sock, GaimInputCondition cond)
     /// Parse our request
     if( ! client_parse_and_dispatch( httpd, buffer,len ) )
     {
-        gaim_debug_info("WebGaim 2","unknow request\n");
+        gaim_debug_info("WebGaim 2","unknown request\n");
         client_write_header( httpd,"/" );
         client_write(httpd,"Borked: WebGaim was handed a URL it does not know how to handle. ( Closing Session )");
         client_write_tail( httpd );
