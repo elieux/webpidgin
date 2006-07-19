@@ -49,14 +49,20 @@ static char  *license = "\
  *     2.0-BXX
  *       - Buddies in the WebGaim Buddy List will now be laid out in the
  *          same manner as in Gaim, including Groups. ( Buddies->Sort Buddies )
- *       - Removed support for Gaim < 2.0; code was getting too messy
+ *       - Removed support for Gaim < 2.0.beta2; code was getting too messy
+ *           Please upgrade to at least gaim 2.0beta3
  *       - Added Auto-Refresh with meta refresh tag
  *         + preference to enable/disable, set # seconds in plugin details
+ *         + Added Dynamic support. Refresh interval will increase and decrease 
+ *           based on rate of conversation
  *       - Status stub
  *       - RSS Status feed available at http://<ip>:<port>/status.rss
  *         + Compatible with Akregator, Google
  *         + Passes validation ( http://www.feedvalidator.org/ )
  *         + Toggle through Plugin Options
+ *       - Fixed 
+ *         + Couple Memory Leaks
+ *         + Segfault on empty send message
  *     2.0-B15
  *       - Added Basic History Code
  *       - Added Option for frames ( Active Buddy List In Frames )
@@ -185,8 +191,18 @@ static gboolean gOptionBoldNames = 1;
 static gboolean gOptionStatusMessages = 1;
 static gboolean gOptionWWWFrames = 0;
 static gboolean gOptionMetaRefresh = 0;
-static int gOptionMetaRefreshSeconds = 180; // refresh after 3 minutes (if enabled)
+static gboolean gOptionMetaRefreshDynamic = 0; // speed up refresh rate when we start getting messages
+static int gOptionMetaRefreshSeconds = 180;    // refresh after 3 minutes (if enabled)
+static int gLastRefreshInterval = 0;
+static int gUnseenMessageCount = 0;
+static int gMissedRefreshes = 0;
+
 static gboolean gOptionRSSFeed = 1;
+
+#define DREFRESH_MIN    4
+#define DREFRESH_STEP   2 /// Cut in half at each hit
+
+
 
 typedef struct{
     const char * name;
@@ -292,6 +308,7 @@ static void webgaim_load_pref()
     gOptionBoldNames = gaim_prefs_get_bool("/plugins/webgaim/use_bold_names");
     gOptionWWWFrames = gaim_prefs_get_bool("/plugins/webgaim/use_www_frames");
     gOptionMetaRefresh = gaim_prefs_get_bool("/plugins/webgaim/use_meta_refresh");
+    gOptionMetaRefreshDynamic = gaim_prefs_get_bool("/plugins/webgaim/use_meta_refresh_dynamic");
     gOptionStatusMessages = gaim_prefs_get_bool("/plugins/webgaim/use_status_messages");
     gOptionUsername = gaim_prefs_get_string("/plugins/webgaim/server_user");
     gOptionPassword = gaim_prefs_get_string("/plugins/webgaim/server_password");
@@ -398,7 +415,10 @@ static webgaim_chat_t * chat_add( const char * buddy, int whom, const char * dat
     conv->chat = chat;
     chat->head = conv;
     if( whom == CONV_SOURCE_BUDDY )
+    {
         chat->unseen++;
+        gUnseenMessageCount++;
+    }
 
     if( gOptionRSSFeed )
     {
@@ -674,6 +694,42 @@ static void client_write_header( webgaim_client_t * httpd, const char *update )
     client_write( httpd,"  <meta http-equiv=\"Pragma\" content=\"no-cache\">\n");
     if ( gOptionMetaRefresh )
     {
+        if( gOptionMetaRefreshDynamic )
+        {
+            /// Dynamically adjust our web browser refresh speed up and down
+            /// as messages start to come in
+            if( gLastRefreshInterval == 0 )
+                gLastRefreshInterval = gOptionMetaRefreshSeconds;
+
+            if( gUnseenMessageCount > 0 )
+            {
+                gLastRefreshInterval = gLastRefreshInterval / DREFRESH_STEP;
+                gMissedRefreshes = 0;
+            }
+            else if( gMissedRefreshes > 1 )
+            {
+                // Delay upstep by 1 refresh cycle
+                gLastRefreshInterval = gLastRefreshInterval * DREFRESH_STEP;
+                gMissedRefreshes = 0;
+            }
+            else
+            {
+                gMissedRefreshes++;
+            }
+
+            gUnseenMessageCount = 0;
+
+            if( gLastRefreshInterval > gOptionMetaRefreshSeconds )
+                gLastRefreshInterval = gOptionMetaRefreshSeconds;
+
+            if( gLastRefreshInterval < DREFRESH_MIN )
+                gLastRefreshInterval = DREFRESH_MIN;
+        }
+        else
+        {
+            gLastRefreshInterval = gOptionMetaRefreshSeconds;
+        }
+
         // Only refresh on root, active, chat, and status pages
         if( ( strcmp(update,"/") == 0 ) ||
             ( strcmp(update,"/ActiveList") == 0 ) ||
@@ -681,7 +737,7 @@ static void client_write_header( webgaim_client_t * httpd, const char *update )
             ( ( strstr(update,"/chat") != NULL ) && ( gOptionWWWFrames == 0 ) ) || 
             ( strstr(update,"/Status") != NULL ) )
         {
-            snprintf(buffer,sizeof(buffer),"  <meta http-equiv=\"refresh\" content=\"%d\">\n",gOptionMetaRefreshSeconds);
+            snprintf(buffer,sizeof(buffer),"  <meta http-equiv=\"refresh\" content=\"%d\">\n",gLastRefreshInterval);
             client_write( httpd,buffer);
         }
     }
@@ -920,6 +976,19 @@ static void show_active_chats( webgaim_client_t * httpd, const char * except )
 }
 
 
+static void client_write_last_update( webgaim_client_t * httpd )
+{
+    if( gOptionMetaRefresh )
+    {
+        char buffer[128];
+        time_t tme = time(NULL);
+        struct tm *tm = localtime( &tme );
+        snprintf(buffer,128,"%d:%02d:%02d&nbsp;(%d)",tm->tm_hour,tm->tm_min,tm->tm_sec,gLastRefreshInterval);
+        client_write(httpd,"<HR>");
+        client_write(httpd,buffer);
+    }
+}
+
 static int action_active_list( webgaim_client_t * httpd, const char * notused )
 {
     GaimGtkBuddyList *gtkblist = gaim_gtk_blist_get_default_gtk_blist();
@@ -944,6 +1013,9 @@ static int action_active_list( webgaim_client_t * httpd, const char * notused )
     {
         webgaim_buddy_list_walk(httpd,extra_html,GTK_TREE_MODEL(gtkblist->treemodel),&iter);
     }
+    
+
+    client_write_last_update( httpd ); 
     client_write_tail( httpd );
     return 1;
 }
@@ -1009,6 +1081,7 @@ static int action_options( webgaim_client_t * httpd, const char * extra )
         webgaim_save_pref_bool( "use_status_messages",webgaim_get_param_bool( extra,"use_status_messages") );
         webgaim_save_pref_bool( "use_www_frames",     webgaim_get_param_bool( extra,"use_www_frames") );
         webgaim_save_pref_bool( "use_meta_refresh",   webgaim_get_param_bool( extra,"use_meta_refresh") );
+        webgaim_save_pref_bool( "use_meta_refresh_dynamic",   webgaim_get_param_bool( extra,"use_meta_refresh_dynamic") );
         webgaim_save_pref_bool( "use_rss_feed",   webgaim_get_param_bool( extra,"use_rss_feed") );
 
         value = webgaim_get_param_int( extra,"meta_refresh_seconds");
@@ -1051,6 +1124,10 @@ static int action_options( webgaim_client_t * httpd, const char * extra )
 
     snprintf(buffer,1024,"&nbsp;&nbsp;&nbsp;&nbsp;Seconds: <input type=text value=\"%d\" size=4 maxlength=4 name=meta_refresh_seconds><BR>\n",gOptionMetaRefreshSeconds);
     client_write(httpd,buffer);
+
+    snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=use_meta_refresh_dynamic %s>Dynamic Refresh<BR>\n",gOptionMetaRefreshDynamic ? "checked" : "");
+    client_write(httpd,buffer);
+
 
     snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=use_rss_feed %s>Enable RSS Feed<BR>\n",gOptionRSSFeed ? "checked" : "");
     client_write(httpd,buffer);
@@ -1347,6 +1424,7 @@ static int action_send( webgaim_client_t * httpd, const char * extra )
     gaim_debug_info("Webgaim 2","Extra[%s]\n",extra);
 
     /// FIRST we need to see if we can find a conversation window with this chat already in there
+    gMissedRefreshes = 0;
     encoded_buddy = extra;
     message= strstr(encoded_buddy,"=");
     if( message )
@@ -1525,9 +1603,9 @@ static int action_status( webgaim_client_t * httpd, const char * unused )
     client_write(httpd,WEBGAIM_VERSION);
     client_write(httpd,"<BR><BR>\n");
 
-    my_addr = gaim_network_get_local_system_ip(httpd->fd);
-    snprintf(buffer,1024,"System IP: %s<BR>\n", my_addr? my_addr : "N/A" );
-    client_write(httpd,buffer);
+//    my_addr = gaim_network_get_local_system_ip(httpd->fd);
+//    snprintf(buffer,1024,"System IP: %s<BR>\n", my_addr? my_addr : "N/A" );
+//    client_write(httpd,buffer);
 
     my_addr = gaim_network_get_my_ip(-1);
     snprintf(buffer,1024,"Public IP: %s<BR>\n", my_addr? my_addr : "N/A" );
@@ -1535,6 +1613,23 @@ static int action_status( webgaim_client_t * httpd, const char * unused )
 
     snprintf(buffer,1024,"RSS Feed: %s<BR>\n",gOptionRSSFeed ? "Enabled" : "Disabled");
     client_write(httpd,buffer);
+
+    snprintf(buffer,1024,"Auto Refresh: %s",gOptionMetaRefresh ? "Enabled" : "Disabled");
+    client_write(httpd,buffer);
+
+    if( gOptionMetaRefresh )
+    {
+        snprintf(buffer,1024," (%d sec)",gOptionMetaRefreshSeconds);
+        client_write(httpd,buffer);
+    }
+
+    if( gOptionMetaRefreshDynamic )
+    {
+        snprintf(buffer,1024," *Dynamic*");
+        client_write(httpd,buffer);
+    }
+    client_write(httpd,"<BR>\n");
+
 
     client_write(httpd,"<HR>\n");
     //More stuff here like, e-mail notices etc
@@ -2273,6 +2368,11 @@ static void type_toggle_cb(GtkWidget *widget, gpointer data)
         gOptionMetaRefresh = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
         webgaim_save_pref_bool( (char*)data, gOptionMetaRefresh );
     }
+    else if( strcmp(data,"use_meta_refresh_dynamic") == 0  )
+    {
+        gOptionMetaRefresh = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+        webgaim_save_pref_bool( (char*)data, gOptionMetaRefresh );
+    }
     else if( strcmp(data,"use_rss_feed") == 0  )
     {
         gOptionRSSFeed = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
@@ -2402,6 +2502,14 @@ static GtkWidget * get_config_frame(GaimPlugin *plugin)
 	g_signal_connect(G_OBJECT(toggle), "clicked",
 					 G_CALLBACK(gaim_gtk_toggle_sensitive), spin_button);
 
+
+    toggle = gtk_check_button_new_with_mnemonic(_("Dynamic Auto-Refresh"));
+    gtk_box_pack_start(GTK_BOX(vbox), toggle, FALSE, FALSE, 0);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(toggle),
+                                     gaim_prefs_get_bool("/plugins/webgaim/use_meta_refresh_dynamic"));
+    g_signal_connect(G_OBJECT(toggle), "toggled",
+                         G_CALLBACK(type_toggle_cb), "use_meta_refresh_dynamic");
+
     toggle = gtk_check_button_new_with_mnemonic(_("Enable RSS Feed"));
     gtk_box_pack_start(GTK_BOX(vbox), toggle, FALSE, FALSE, 0);
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(toggle),
@@ -2463,6 +2571,7 @@ static void init_plugin(GaimPlugin *plugin)
     gaim_prefs_add_bool("/plugins/webgaim/use_status_messages", 1);
     gaim_prefs_add_bool("/plugins/webgaim/use_www_frames", 0);
     gaim_prefs_add_bool("/plugins/webgaim/use_meta_refresh", 0);
+    gaim_prefs_add_bool("/plugins/webgaim/use_meta_refresh_dynamic", 0);
     gaim_prefs_add_int("/plugins/webgaim/meta_refresh_seconds", 180);
     gaim_prefs_add_bool("/plugins/webgaim/use_rss_feed", 1);
 }
