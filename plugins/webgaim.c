@@ -1663,6 +1663,8 @@ static char * webgaim_rss_strip_html( char * msg )
             switch( tmp[i] ){
                 case '<' :
                 case '>' :
+                case '&' :
+                case '%' :
                 break;
 
                 default:
