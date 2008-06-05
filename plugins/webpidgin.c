@@ -510,6 +510,24 @@ static PurpleBuddy * find_buddy( char *name )
     return NULL;
 }
 
+/**
+ * @brief Find a conversation by name
+ */
+static PurpleConversation * find_conversation(char *name)
+{
+    GList *cnv;
+    for (cnv = purple_get_conversations(); cnv != NULL; cnv = cnv->next) {
+        PurpleConversation *conv = NULL;
+        const char *convName = NULL;
+        conv = (PurpleConversation *)cnv->data;
+        convName = purple_conversation_get_name(conv);
+        if ( (convName) && (strcmp(convName,name) == 0)) {
+            return conv;
+        }
+    }
+    return NULL;
+}
+
 static const char *self = "Self";
 /**
  * @brief retreive the name that should appear on the UI based on the
@@ -656,7 +674,7 @@ static char * webpidgin_normalize( const char * message )
 static void client_write( webpidgin_client_t * httpd, const char *buffer )
 {
     /// FIXME: We need to LOOP_EINTR here
-    (void)write( httpd->fd,buffer,strlen(buffer));
+    (void) write( httpd->fd,buffer,strlen(buffer));
 }
 
 /**
@@ -915,6 +933,7 @@ static void show_active_chats( webpidgin_client_t * httpd, const char * except )
     char extra_html[512];
     unsigned count = 0;
     PurpleBlistNode *gnode, *cnode, *bnode;
+    GList *cnv;
 
     strcpy(extra_html, "");
     if( gOptionWWWFrames )
@@ -979,6 +998,35 @@ static void show_active_chats( webpidgin_client_t * httpd, const char * except )
             }
         }
     }
+
+    /** Now see if what active conversations we have */
+   for (cnv = purple_get_conversations(); cnv != NULL; cnv = cnv->next) {
+      PurpleConversation *conv;
+      PurpleAccount *account;
+      PurpleConversationType type;
+      conv = (PurpleConversation *)cnv->data;
+      type = purple_conversation_get_type(conv);
+
+      account = purple_conversation_get_account(conv);
+      if (account) {
+         const char * proto = purple_account_get_protocol_name(account);
+         if ((proto) && (strcmp(proto,"IRC") == 0)) {
+            char * encoded_name = NULL;
+            const char *name = NULL;
+
+            name =  purple_conversation_get_name(conv);
+            encoded_name = webpidgin_encode( name );
+            if (!encoded_name)
+                continue;
+
+            purple_debug_info("WebPidgin 2","%s : %s\n",name,encoded_name);
+            snprintf(buffer,sizeof(buffer),"&nbsp;(IRC)&nbsp; <A HREF=conversation?%s%s %s>%s</A><BR>\n", time_stamp(), encoded_name, extra_html, name);
+            client_write(httpd, buffer);
+            g_free(encoded_name);
+         }
+      }
+   }
+
 }
 
 
@@ -1421,13 +1469,147 @@ static int action_chat( webpidgin_client_t * httpd, const char * extra )
 }
 
 /**
+ * @brief handle a click on a buddy, which opens the "chat" view
+ * @brief then handle any new message updates, etc.
+ */
+static int action_conversation( webpidgin_client_t * httpd, const char * extra )
+{
+    char buffer[1024];
+    char * name;
+    const char * self;
+    PurpleConversation *conv;
+
+    purple_debug_info("WebPidgin 2","IRC::Extra[%s]\n",extra);
+
+
+    name = webpidgin_normalize( extra );
+
+    self = get_self_name( name ); /// Get the name we will use for ourselves
+
+    snprintf(buffer,1024,"/conversation?%s%s",time_stamp(),extra);
+    client_write_header( httpd,buffer);
+
+    /// Now our web form for the chat
+    client_write(httpd,"<form method=\"get\" action=\"/sendMessage?\">\n");
+    client_write(httpd,"<div>\n");
+    snprintf(buffer,1024,"<input style=\"-wap-input-format: *m\" name=\"%s\" tabindex=1 size=48 maxlength=128/>\n",name);
+    client_write(httpd,buffer);
+    client_write(httpd,"<input type=\"submit\" value=\"sendMessage\" tabindex=2/>\n");
+    client_write(httpd,"</div>\n");
+    client_write(httpd,"</form>\n");
+
+    conv = find_conversation(name);
+    if (conv) {
+        GList *histIter;
+        purple_debug_info("WebPidgin 2","IRC::looking for messages in history\n");
+
+        for (histIter=purple_conversation_get_message_history(conv);histIter!=NULL;histIter=histIter->next) {
+            PurpleConvMessage *msg = histIter->data;
+            time_t when; 
+            struct tm *tm; 
+            when = msg->when;
+            tm = localtime( &when );
+
+            purple_debug_info("WebPidgin 2","IRC::Found message %s\n", msg->what);
+
+            snprintf(buffer,1024,"(%d:%02d:%02d)&nbsp;",tm->tm_hour,tm->tm_min,tm->tm_sec);
+            client_write(httpd,buffer);
+
+            if( gOptionBoldNames )
+                client_write(httpd,"<B>");
+
+            client_write(httpd,msg->who);
+
+            if( gOptionBoldNames )
+                client_write(httpd,"</B>");
+
+            client_write(httpd,":&nbsp;"); /// Add a space, otherwise things blend in to much
+            {
+                char * tmpstr = purple_markup_strip_html(msg->what);
+                client_write(httpd,tmpstr);
+                g_free(tmpstr);
+            }
+            client_write(httpd,"<BR>\n");
+        }
+    } else {
+        purple_debug_info("WebPidgin 2","IRC::Could not locate conversation for %s\n", name);
+    }
+    /// Show any active chats from other users. IE we're talking to bob, but in the meantime sally IM-ed us
+    /// show sally has an unread message for us. ( Just like the Active: buddies section on the root page )
+    show_active_chats( httpd, name );
+    g_free( name );
+
+    client_write_tail( httpd );
+    return 1;
+}
+
+/**
+ * @brief Execute the http-post click
+ */
+static int action_sendMessage( webpidgin_client_t * httpd, const char * extra )
+{
+    const char * encoded_name= NULL;
+    char * message = NULL;
+    purple_debug_info("WebPidgin 2","sendMessage::Extra[%s]\n",extra);
+
+    /// FIRST we need to see if we can find a conversation window with this chat already in there
+    gMissedRefreshes = 0;
+    encoded_name = extra;
+    message = strstr(encoded_name,"=");
+    if( message )
+    {
+        char * name;
+        char * normal;
+        PurpleConversation *c;
+        PurpleConversationType type;
+
+        *message='\0';
+        message++;
+
+        name = webpidgin_normalize(encoded_name);
+
+        c = find_conversation(name);
+        if (!c) {
+            return 0;
+        }
+
+        normal = webpidgin_normalize( message );
+        type = purple_conversation_get_type(c);
+
+        switch (type) {
+            case PURPLE_CONV_TYPE_IM:
+                purple_conv_im_send( PURPLE_CONV_IM(c), normal);
+            break;
+
+            case PURPLE_CONV_TYPE_CHAT:
+                purple_conv_chat_send( PURPLE_CONV_CHAT(c), normal);
+            break;
+
+            default:
+                purple_debug_info("WebPidgin 2","sendMessage::UnhandledType[%d]\n",type);
+            break;
+        }
+
+        g_free(name);
+        g_free(normal);
+
+        action_conversation(httpd, encoded_name);
+    }
+    else
+    {
+        return action_root(httpd,NULL);
+    }
+    return 1;
+}
+
+/**
  * @brief Execute the http-post click
  */
 static int action_send( webpidgin_client_t * httpd, const char * extra )
 {
     const char * encoded_buddy = NULL;
     char * message = NULL;
-    purple_debug_info("WebPidgin 2","Extra[%s]\n",extra);
+    purple_debug_info("WebPidgin 2","Send::Extra[%s]\n",extra);
 
     /// FIRST we need to see if we can find a conversation window with this chat already in there
     gMissedRefreshes = 0;
@@ -1448,7 +1630,7 @@ static int action_send( webpidgin_client_t * httpd, const char * extra )
         if( !b )
         {
             g_free(buddy);
-            purple_debug_info("WebPidgin 2","Could not find buddy\n",buddy);
+            purple_debug_info("WebPidgin 2","Could not find buddy %s\n",buddy);
             return 0;
         }
 
@@ -1466,7 +1648,7 @@ static int action_send( webpidgin_client_t * httpd, const char * extra )
             purple_conv_im_send( PURPLE_CONV_IM(c),normal);
         //    chat_send(b->name,normal);    /// Not needed as we get a send bounce
         } else {
-            purple_debug_info("WebPidgin 2","Could start new chat with \n",buddy);
+            purple_debug_info("WebPidgin 2","Could start new chat with %s\n",buddy);
          }
 
         g_free(buddy);
@@ -1845,6 +2027,8 @@ static webpidgin_parse_t webpidgin_actions[] = {
     { "/login",action_login },
     { "/logout",action_logout },
     { "/chat",action_chat },
+    { "/conversation",action_conversation },
+    { "/sendMessage",action_sendMessage },
     { "/send",action_send },
     { "/Accounts",action_accounts },
     { "/Options",action_options },
@@ -2004,6 +2188,7 @@ static int client_parse_and_dispatch(webpidgin_client_t *httpd, char * buffer, c
 {
     char * purl = NULL;
     
+    purple_debug_info("WebPidgin 2","HTTP: [%s]\n", buffer);
 
     /// Id auth is enabled check the response
     if( httpd->webpidgin->auth )
