@@ -502,9 +502,6 @@ static PurpleBuddy * find_buddy( char *name )
             {
                 PurpleBuddy *buddy = (PurpleBuddy *)bnode;
 
-                if ( ! PURPLE_BUDDY_IS_ONLINE(buddy))
-                    continue;
-
                 if( strcmp(buddy->name,name)== 0 )
                     return buddy;
             }
@@ -851,7 +848,7 @@ static void webpidgin_show_buddy(webpidgin_client_t * httpd,const char * extra_h
 
         client_write(httpd,buffer);
     } else if (!purple_presence_is_available(buddy->presence)) {
-        client_write(httpd," (Away)");
+        client_write(httpd," (Offline)");
     }
     client_write(httpd,"<BR>\n");
 }
@@ -1451,7 +1448,8 @@ static int action_send( webpidgin_client_t * httpd, const char * extra )
         if( !b )
         {
             g_free(buddy);
-            return 1;
+            purple_debug_info("WebPidgin 2","Could not find buddy\n",buddy);
+            return 0;
         }
 
         normal = webpidgin_normalize( message );
@@ -1467,7 +1465,9 @@ static int action_send( webpidgin_client_t * httpd, const char * extra )
         {
             purple_conv_im_send( PURPLE_CONV_IM(c),normal);
         //    chat_send(b->name,normal);    /// Not needed as we get a send bounce
-        }
+        } else {
+            purple_debug_info("WebPidgin 2","Could start new chat with \n",buddy);
+         }
 
         g_free(buddy);
         g_free(normal);
