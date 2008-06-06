@@ -1151,10 +1151,10 @@ static int action_conversation( webpidgin_client_t * httpd, const char * extra )
 
     conv = find_conversation(name);
     if (conv) {
-        GList *histIter;
+        GList *iter;
         msgCount = 0;
-        for (histIter=purple_conversation_get_message_history(conv);histIter!=NULL;histIter=histIter->next) {
-            PurpleConvMessage *msg = histIter->data;
+        for (iter=purple_conversation_get_message_history(conv);iter!=NULL;iter=iter->next) {
+            PurpleConvMessage *msg = iter->data;
             time_t when; 
             struct tm *tm; 
 
@@ -1187,6 +1187,23 @@ static int action_conversation( webpidgin_client_t * httpd, const char * extra )
             client_write(httpd,"<BR>\n");
             msgCount++;
         }
+
+        /// Now if this is a chat room, get a list of people in the chat:
+        purple_conversation_get_type(conv);
+        if (purple_conversation_get_type(conv) == PURPLE_CONV_TYPE_CHAT) {
+            PurpleConvChat *chat;
+            client_write(httpd, "<HR><B>Members:</B>");
+
+            chat = PURPLE_CONV_CHAT(conv);
+
+            for (iter=purple_conv_chat_get_users(chat);iter!=NULL;iter=iter->next) {
+                PurpleConvChatBuddy *buddy;
+                buddy = (PurpleConvChatBuddy *) iter->data;
+                snprintf(buffer,1024,"&nbsp;%s ,", buddy->name);
+                client_write(httpd, buffer);
+            }
+        }
+        client_write(httpd, "<HR>");
     } else {
         purple_debug_info("WebPidgin 2","conversation::Could not locate conversation for %s\n", name);
     }
