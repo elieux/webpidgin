@@ -1140,6 +1140,10 @@ static int action_conversation( webpidgin_client_t * httpd, const char * extra )
     snprintf(buffer,1024,"/conversation?%s%s",time_stamp(),extra);
     client_write_header( httpd,buffer);
 
+    client_write(httpd, "Chatting With:&nbsp;");
+    client_write(httpd, name);
+    client_write(httpd, "<BR>");
+
     /// Now our web form for the chat
     client_write(httpd,"<form method=\"get\" action=\"/sendMessage?\">\n");
     client_write(httpd,"<div>\n");
@@ -1153,6 +1157,7 @@ static int action_conversation( webpidgin_client_t * httpd, const char * extra )
     if (conv) {
         GList *iter;
         msgCount = 0;
+
         for (iter=purple_conversation_get_message_history(conv);iter!=NULL;iter=iter->next) {
             PurpleConvMessage *msg = iter->data;
             time_t when; 
