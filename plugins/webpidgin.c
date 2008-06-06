@@ -170,6 +170,7 @@ static char  *license = "\
 #include "version.h"
 #include "util.h"
 #include "debug.h"
+#include "cmds.h"
 
 #include "gtkplugin.h"
 #include "gtkutils.h"
@@ -1239,6 +1240,7 @@ static int action_sendMessage( webpidgin_client_t * httpd, const char * extra )
         char * encoded_name= NULL;
         PurpleConversation *c;
         PurpleConversationType type;
+        PurpleCmdStatus status = PURPLE_CMD_STATUS_OK;
 
         *message='\0';
         message++;
@@ -1267,28 +1269,41 @@ static int action_sendMessage( webpidgin_client_t * httpd, const char * extra )
         }
 
         normal = webpidgin_normalize( message );
-        type = purple_conversation_get_type(c);
 
-        switch (type) {
-            case PURPLE_CONV_TYPE_IM:
-                purple_conv_im_send( PURPLE_CONV_IM(c), normal);
-            break;
 
-            case PURPLE_CONV_TYPE_CHAT:
-                purple_conv_chat_send( PURPLE_CONV_CHAT(c), normal);
-            break;
+        if (normal[0]=='/') {
+            char * error = NULL;
+            char * cmdline;
 
-            default:
-                purple_debug_info("WebPidgin 2","sendMessage::UnhandledType[%d]\n",type);
-            break;
+            cmdline = &normal[1];
+            status = purple_cmd_do_command(c, cmdline, cmdline, &error);
+            if (error) {
+                purple_debug_info("WebPidgin 2","sendMessage::do command[%d:%s]\n",status, error);    
+                g_free(error);
+            }
+        } else {
+
+            type = purple_conversation_get_type(c);
+            switch (type) {
+                case PURPLE_CONV_TYPE_IM:
+                    purple_conv_im_send( PURPLE_CONV_IM(c), normal);
+                break;
+
+                case PURPLE_CONV_TYPE_CHAT:
+                    purple_conv_chat_send( PURPLE_CONV_CHAT(c), normal);
+                break;
+
+                default:
+                    purple_debug_info("WebPidgin 2","sendMessage::UnhandledType[%d]\n",type);
+                break;
+            }
         }
-
-        g_free(name);
-        g_free(normal);
-
         encoded_name = webpidgin_encode(purple_conversation_get_name(c));
         action_conversation(httpd, encoded_name);
         g_free(encoded_name);
+        g_free(name);
+        g_free(normal);
+
     }
     else
     {
