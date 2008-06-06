@@ -38,14 +38,24 @@ static char  *license = "\
  *   - http://localhost:8888/ should display the Root/Home page
  */
 
-#define WEBPIDGIN_VERSION "2.0-BXX"
+#define WEBPIDGIN_VERSION "2.0-B18"
 
 /**
+ *
  * CHANGES:
  *     TODO:
- *       - Colorize History Display
+ *       - Fix Colorize History 
+ *       - Fix RSS feed
  *       - Add History Searching using regex?
+ *       - Closing Chats/IM views
  *
+ *     2.0-B18 (6/5/2008)
+ *       - Add support for IRC and chat rooms.
+ *       - Changed the send/display method for messages. Use libpurple internals
+ *       - Support for / commands ( Mostly for IRC )
+ *       - If in Chat room, display other chat room members
+ *       - Display current conversation name in the conversation window
+ *       - Broke: rss feed, colored display
  *     2.0-B17 (6/8/2007)
  *       - Update to use Pidgin interfaces
  *       - Renamed to WebPidgin
@@ -148,11 +158,6 @@ static char  *license = "\
  *   From here you can send a IM to the buddy you selected.  
  *   ( As a side effect it will also open a pidgin window on the PC running pidgin )
  *
- * Things I'm working on:
- *   - error handling 
- *   - Support for chat and chat room
- *   - closing/ending im/chats
- *   - Requests?
  *
  */
 #include "internal.h"
