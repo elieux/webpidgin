@@ -45,10 +45,12 @@ static char  *license = "\
  * CHANGES:
  *     TODO:
  *       - Fix Colorize History 
- *       - Fix RSS feed
  *       - Add History Searching using regex?
  *       - Closing Chats/IM views
  *
+ *     2.0-B19 (6/8/2008)
+ *       - Fixed RSS feed
+ *       - Fix Colorize History 
  *     2.0-B18 (6/5/2008)
  *       - Add support for IRC and chat rooms.
  *       - Changed the send/display method for messages. Use libpurple internals
@@ -210,6 +212,7 @@ static int gOptionMetaRefreshSeconds = 180;    // refresh after 3 minutes (if en
 static int gLastRefreshInterval = 0;
 static int gUnseenMessageCount = 0;
 static int gMissedRefreshes = 0;
+static int gOptionFontAdjust = 0;
 
 static gboolean gOptionRSSFeed = 1;
 
@@ -245,6 +248,17 @@ typedef struct{
 }webpidgin_parse_t;
 
 
+
+typedef struct rss_item_s{
+    struct rss_item_s *next;
+    char *who;
+    char *what;
+    char *convName;
+    time_t tm;
+}rss_item_t;
+
+static rss_item_t rssHead = { NULL, NULL, NULL, NULL, 0 };
+
 static const char *empty_string ="";
 
 /// Prototypes of functions, so they can be called before they're defined
@@ -276,6 +290,7 @@ static void webpidgin_load_pref()
     gOptionPort = purple_prefs_get_string("/plugins/webpidgin/server_port");
     gOptionMetaRefreshSeconds = purple_prefs_get_int("/plugins/webpidgin/meta_refresh_seconds");
     gOptionRSSFeed = purple_prefs_get_bool("/plugins/webpidgin/use_rss_feed");
+    gOptionFontAdjust= purple_prefs_get_int("/plugins/webpidgin/font_adjust");
 }
 
 /**
@@ -327,44 +342,73 @@ static PurpleBuddy * find_buddy( char *name )
 
 /**
  * @brief Find a conversation by name
+ *        // Format should be: type=%d&name
  */
+
 static PurpleConversation * find_conversation(char *name)
 {
-    GList *cnv;
-    for (cnv = purple_get_conversations(); cnv != NULL; cnv = cnv->next) {
-        PurpleConversation *conv = NULL;
-        const char *convName = NULL;
-        conv = (PurpleConversation *)cnv->data;
-        convName = purple_conversation_get_name(conv);
-        if ( (convName) && (strcmp(convName,name) == 0)) {
-            return conv;
+    PurpleConversation *conv = NULL;
+    uint64_t id;
+
+    if (sscanf(name,"id=%llx&",&id) == 1) {
+        GList *cnv;
+        for (cnv = purple_get_conversations(); cnv != NULL; cnv = cnv->next) {
+            conv = (PurpleConversation *)cnv->data;
+            purple_debug_info("WebPidgin 2.x","check [%p = %llx]\n",conv,id);
+            if (conv==id) {
+                return conv;
+            }
+        }
+    } else {
+        GList *cnv;
+        for (cnv = purple_get_conversations(); cnv != NULL; cnv = cnv->next) {
+            const char *convName = NULL;
+            conv = (PurpleConversation *)cnv->data;
+            convName = purple_conversation_get_name(conv);
+            if ( (convName) && (strcmp(convName,name) == 0)) {
+                return conv;
+            }
         }
     }
     return NULL;
 }
 
-static const char *self = "Self";
 /**
  * @brief retreive the name that should appear on the UI based on the
  * @brief buddy.
  */
-static const char * get_self_name( char * buddy )
+static const char * get_self_name(PurpleConversation *conv)
 {
-    PurpleBuddy *b = find_buddy( buddy );
-    /// If buddy is NULL, we return "Self" something is pretty wrong
-    if( ! b )
+    static const char *gSelf = "";
+    const char *self;
+    PurpleAccount *account;
+
+    account = purple_conversation_get_account(conv);
+    if (!account) {
+        return gSelf;
+    }
+
+    if (purple_conversation_get_type(conv) == PURPLE_CONV_TYPE_CHAT) {
+        PurpleConvChat *chat;
+
+        chat = PURPLE_CONV_CHAT(conv);
+        self = purple_conv_chat_get_nick(chat);
+        if (self) {
+            return self;
+        }
+    }
+
+/*    self = purple_account_get_alias(account);
+    if (self) {
         return self;
+    }*/
 
-    /// If account is NULL, we return "Self" something is pretty wrong
-    if( ! b->account )
+    self = purple_account_get_username(account);
+    if (self) {
         return self;
+    }
 
-    /// If an alias is defined for this account, use it
-    if( b->account->alias )
-        return b->account->alias;
-
-    /// Otherwise use the username
-    return b->account->username;
+    return gSelf;
 }
 
 
@@ -591,11 +635,24 @@ static void client_write_header( webpidgin_client_t * httpd, const char *update 
         if( ( strcmp(update,"/") == 0 ) || ( strcmp(update,"/ActiveList") == 0 ) )
         {
             client_write( httpd,"<body bgcolor=#EEEEEE>\n");
+            if (gOptionFontAdjust >= 0) {
+                snprintf(buffer,sizeof(buffer),"<FONT SIZE=+%d>", gOptionFontAdjust);
+            } else if(gOptionFontAdjust < 0) {
+                snprintf(buffer,sizeof(buffer),"<FONT SIZE=%d>", gOptionFontAdjust);
+            }
+            client_write(httpd, buffer);
+
             snprintf(buffer,sizeof(buffer),"CMD: <A HREF=%s target=\"list\">U</A> | <A HREF=/Accounts target=\"conv\">A</A> | <A HREF=/Options target=\"conv\">O</A> | <A HREF=/Help target=\"conv\">?</A><HR>\n",update);
         }
         else
         {
             client_write( httpd,"<body>\n");
+            if (gOptionFontAdjust >= 0) {
+                snprintf(buffer,sizeof(buffer),"<FONT SIZE=+%d>", gOptionFontAdjust);
+            } else if(gOptionFontAdjust < 0) {
+                snprintf(buffer,sizeof(buffer),"<FONT SIZE=%d>", gOptionFontAdjust);
+            }
+            client_write(httpd, buffer);
             snprintf(buffer,sizeof(buffer),"CMD: <A HREF=%s target=\"conv\">Update</A><HR> \n",update);
         }
     }
@@ -605,6 +662,13 @@ static void client_write_header( webpidgin_client_t * httpd, const char *update 
         // Not framed; use the "Normal Way"
         //
         client_write( httpd,"<body>\n");
+        if (gOptionFontAdjust >= 0) {
+            snprintf(buffer,sizeof(buffer),"<FONT SIZE=+%d>", gOptionFontAdjust);
+        } else if(gOptionFontAdjust < 0) {
+            snprintf(buffer,sizeof(buffer),"<FONT SIZE=%d>", gOptionFontAdjust);
+        }
+        client_write(httpd, buffer);
+
         snprintf(buffer,sizeof(buffer),"CMD: <A HREF=%s>U</A> | <A HREF=/>H</A> | <A HREF=/Accounts>A</A> | <A HREF=/Options>O</A> | <A HREF=/Help>?</A><HR>\n",update);
     }
 
@@ -616,6 +680,7 @@ static void client_write_header( webpidgin_client_t * httpd, const char *update 
  */
 static void client_write_tail( webpidgin_client_t * httpd )
 {
+    client_write(httpd, "</FONT>");
     client_write( httpd,"</body>\n");
     client_write( httpd,"</html>\n");
     client_write( httpd,"\n\n");
@@ -729,7 +794,14 @@ static void webpidgin_buddy_list_walk( webpidgin_client_t * httpd,const char * e
                 webpidgin_show_buddy( httpd, extra_html, buddy );
             }break;
 
-            default:
+            case PURPLE_BLIST_CHAT_NODE:{
+                PurpleChat * chat = (PurpleChat*)node;
+                const char * name = purple_chat_get_name(chat);
+                snprintf(buffer,sizeof(buffer),"&nbsp;&nbsp; <A HREF=conversation?%s%s %s>%s</A><BR>",time_stamp(),name,extra_html,name);
+                client_write(httpd,buffer);
+            }break;
+
+            default :
                 snprintf(buffer,sizeof(buffer),"<B>type=%ds</B><BR>\n",node->type);
                 client_write(httpd,buffer);
             break;
@@ -771,9 +843,10 @@ static void show_active_chats( webpidgin_client_t * httpd, const char * except )
         if (!encoded_name)
             continue;
 
+
         //unread = get_unread_count(conv);
 
-        snprintf(buffer,sizeof(buffer),"&nbsp;&nbsp; <A HREF=conversation?%s%s %s>%s</A>(%d)<BR>\n", time_stamp(), encoded_name, extra_html, name, unread);
+        snprintf(buffer,sizeof(buffer),"&nbsp;&nbsp; <A HREF=conversation?%sid=%p %s>%s</A>(%d)<BR>\n", time_stamp(), conv, extra_html, name, unread);
         client_write(httpd, buffer);
         g_free(encoded_name);
     }
@@ -895,6 +968,13 @@ static int action_options( webpidgin_client_t * httpd, const char * extra )
             webpidgin_save_pref_int( "meta_refresh_seconds", value );
         }
 
+        value = webpidgin_get_param_int( extra,"font_adjust");
+        if( value >=-10 && value <= 10 )
+        {
+            webpidgin_save_pref_int( "font_adjust", value );
+        }
+
+
         webpidgin_load_pref();
         return action_root(httpd,NULL); // return to root page after preferences saved & reloaded
     }
@@ -918,6 +998,9 @@ static int action_options( webpidgin_client_t * httpd, const char * extra )
     snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=use_bold_names %s>Bold Buddy Names<BR>\n",gOptionBoldNames ? "checked" : "");
     client_write(httpd,buffer);
 
+    snprintf(buffer,1024,"&nbsp;&nbsp;&nbsp;&nbsp;Font Size Adjustment: <input type=text value=\"%d\" size=4 maxlength=4 name=font_adjust>(+1,+2,-1,-2 etc)<BR>\n",gOptionFontAdjust);
+    client_write(httpd,buffer);
+
     snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=use_status_messages %s>Buddy Status Messages<BR>\n",gOptionStatusMessages ? "checked" : "" );
     client_write(httpd,buffer);
 
@@ -929,6 +1012,7 @@ static int action_options( webpidgin_client_t * httpd, const char * extra )
 
     snprintf(buffer,1024,"&nbsp;&nbsp;&nbsp;&nbsp;Seconds: <input type=text value=\"%d\" size=4 maxlength=4 name=meta_refresh_seconds><BR>\n",gOptionMetaRefreshSeconds);
     client_write(httpd,buffer);
+
 
     snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=use_meta_refresh_dynamic %s>Dynamic Refresh<BR>\n",gOptionMetaRefreshDynamic ? "checked" : "");
     client_write(httpd,buffer);
@@ -1132,22 +1216,23 @@ static int action_conversation( webpidgin_client_t * httpd, const char * extra )
 {
     char buffer[1024];
     char * name;
-    const char * self;
     PurpleConversation *conv;
     unsigned msgCount=0;
 
     purple_debug_info("WebPidgin 2","conversation::Extra[%s]\n",extra);
 
-
     name = webpidgin_normalize( extra );
-
-    self = get_self_name( name ); /// Get the name we will use for ourselves
 
     snprintf(buffer,1024,"/conversation?%s%s",time_stamp(),extra);
     client_write_header( httpd,buffer);
 
+    conv = find_conversation(name);
     client_write(httpd, "Chatting With:&nbsp;");
-    client_write(httpd, name);
+    if (conv) {
+        client_write(httpd, purple_conversation_get_name(conv));
+    } else {
+        client_write(httpd, name);
+    }
     client_write(httpd, "<BR>");
 
     /// Now our web form for the chat
@@ -1159,19 +1244,54 @@ static int action_conversation( webpidgin_client_t * httpd, const char * extra )
     client_write(httpd,"</div>\n");
     client_write(httpd,"</form>\n");
 
-    conv = find_conversation(name);
+
     if (conv) {
         GList *iter;
+        const char * self;
         msgCount = 0;
+
+
+        /// Now if this is a chat room, get a list of people in the chat:
+        purple_conversation_get_type(conv);
+        if (purple_conversation_get_type(conv) == PURPLE_CONV_TYPE_CHAT) {
+            PurpleConvChat *chat;
+            chat = PURPLE_CONV_CHAT(conv);
+
+            client_write(httpd, "<B>Topic:</B>");
+            snprintf(buffer,1024,"&nbsp;%s<BR>", purple_conv_chat_get_topic(chat));
+            client_write(httpd, "<B>Members:</B>");
+
+            for (iter=purple_conv_chat_get_users(chat);iter!=NULL;iter=iter->next) {
+                PurpleConvChatBuddy *buddy;
+                buddy = (PurpleConvChatBuddy *) iter->data;
+                snprintf(buffer,1024,"&nbsp;%s ,", buddy->name);
+                client_write(httpd, buffer);
+            }
+        }
+        client_write(httpd, "<HR>");
+
+
+        self =  get_self_name(conv);
 
         for (iter=purple_conversation_get_message_history(conv);iter!=NULL;iter=iter->next) {
             PurpleConvMessage *msg = iter->data;
             time_t when; 
             struct tm *tm; 
+            char color[8] = "#000000";
 
             if (msgCount>=uOptionTrim) {
                 /** Don't show more then uOptionTrim Messages */
                 break;
+            }
+
+
+            purple_debug_info("WebPidgin 2","who=%s self=%s\n", msg->who, self);
+            if (gOptionUseColor) {
+                if (strcasecmp(msg->who, self) == 0) {
+                    snprintf(color,sizeof(color),"#DD5555");
+                } else {
+                    snprintf(color,sizeof(color),"#5555DD");
+                }
             }
 
             when = msg->when;
@@ -1184,7 +1304,12 @@ static int action_conversation( webpidgin_client_t * httpd, const char * extra )
             if( gOptionBoldNames )
                 client_write(httpd,"<B>");
 
+            snprintf(buffer,sizeof(buffer),"<FONT COLOR=%s>",color);
+            client_write(httpd, buffer);
+
             client_write(httpd, msg->who);
+
+            client_write(httpd, "</FONT>");
 
             if( gOptionBoldNames )
                 client_write(httpd,"</B>");
@@ -1199,22 +1324,6 @@ static int action_conversation( webpidgin_client_t * httpd, const char * extra )
             msgCount++;
         }
 
-        /// Now if this is a chat room, get a list of people in the chat:
-        purple_conversation_get_type(conv);
-        if (purple_conversation_get_type(conv) == PURPLE_CONV_TYPE_CHAT) {
-            PurpleConvChat *chat;
-            client_write(httpd, "<HR><B>Members:</B>");
-
-            chat = PURPLE_CONV_CHAT(conv);
-
-            for (iter=purple_conv_chat_get_users(chat);iter!=NULL;iter=iter->next) {
-                PurpleConvChatBuddy *buddy;
-                buddy = (PurpleConvChatBuddy *) iter->data;
-                snprintf(buffer,1024,"&nbsp;%s ,", buddy->name);
-                client_write(httpd, buffer);
-            }
-        }
-        client_write(httpd, "<HR>");
     } else {
         purple_debug_info("WebPidgin 2","conversation::Could not locate conversation for %s\n", name);
     }
@@ -1223,9 +1332,28 @@ static int action_conversation( webpidgin_client_t * httpd, const char * extra )
     show_active_chats( httpd, name );
     g_free( name );
 
+    client_write_last_update( httpd ); 
     client_write_tail( httpd );
     return 1;
 }
+
+static int action_conversation_redirect( webpidgin_client_t * httpd, PurpleConversation *conv )
+{
+    char buffer[4096];
+    if (gOptionWWWFrames) {
+        
+        client_write_http_header(httpd);
+        snprintf(buffer, sizeof(buffer), "<html><head> <meta http-equiv=\"Refresh\" content=\"0; url=/conversation?%sid=%p\"></head><body><p>Please follow <a href=/conversation?%sid=%p>link</a>!</p></body></html>\n",time_stamp(),conv,time_stamp(),conv);
+        client_write( httpd, buffer);
+        client_write_tail(httpd);
+    } else {
+        snprintf(buffer, sizeof(buffer), "id=%p",conv);
+        return action_conversation(httpd, buffer);
+    }
+    return 1;
+}
+
+
 
 /**
  * @brief Execute the http-post click
@@ -1237,12 +1365,12 @@ static int action_sendMessage( webpidgin_client_t * httpd, const char * extra )
 
     /// FIRST we need to see if we can find a conversation window with this chat already in there
     gMissedRefreshes = 0;
+    gLastRefreshInterval = DREFRESH_MIN;
     message = strstr(extra,"=");
     if( message )
     {
         char * name;
         char * normal;
-        char * encoded_name= NULL;
         PurpleConversation *c;
         PurpleConversationType type;
         PurpleCmdStatus status = PURPLE_CMD_STATUS_OK;
@@ -1303,9 +1431,7 @@ static int action_sendMessage( webpidgin_client_t * httpd, const char * extra )
                 break;
             }
         }
-        encoded_name = webpidgin_encode(purple_conversation_get_name(c));
-        action_conversation(httpd, encoded_name);
-        g_free(encoded_name);
+        action_conversation_redirect(httpd, c );
         g_free(name);
         g_free(normal);
 
@@ -1524,14 +1650,64 @@ static char * webpidgin_rss_strip_html( char * msg )
     return tmp;
 }
 
+static void rss_free(rss_item_t *item)
+{
+    if (!item) {
+        return;
+    }
+
+    if (item->who) {
+        g_free(item->who);
+    }
+
+    if (item->what) {
+        g_free(item->what);
+    }
+
+    if (item->convName) {
+        g_free(item->convName);
+    }
+    g_free(item);
+}
+
+static void rss_add(PurpleConversation *conv, char *sender, char *buffer )
+{
+    rss_item_t *item;
+
+    if( gOptionRSSFeed == 0 ) {
+        return;
+    }
+
+    item = (rss_item_t*) g_malloc(sizeof(*item));
+    if (item) {
+        /* Suping the strings here wastes abit of memory, but we can;t controll
+           what pidgin does with the conv pointers after this point so we need 
+           our own copies  */
+        item->who  = strdup(sender);
+        item->what = strdup(buffer);
+        if (conv) {
+            item->convName = strdup(purple_conversation_get_name(conv));
+        }
+        if ((item->who==NULL) || (item->what==NULL)) {
+            rss_free(item);
+        } else {
+            item->tm      = time(NULL);
+            item->next = rssHead.next;
+            rssHead.next  = item;
+        }
+    }
+}
+
+
+
 static int action_rss( webpidgin_client_t * httpd, const char * unused )
 {
-    return 0;
-#if 0
+    rss_item_t *item;
 	const char *my_addr = NULL;
 	const char *rfc822_time = NULL;
     char buffer[1024];
 
+    purple_debug_info("WebPidgin 2","%s\n",__FUNCTION__);
 
     if( gOptionRSSFeed == 0 )
     {
@@ -1569,7 +1745,7 @@ static int action_rss( webpidgin_client_t * httpd, const char * unused )
         if ( item == rssHead.next )
         {
             // Write a <pubDate> for the <channel> = the date the last IM was received
-            rfc822_time = purple_utf8_strftime("%a, %d %b %Y %H:%M:%S %z", localtime(&item->conv->tm));
+            rfc822_time = purple_utf8_strftime("%a, %d %b %Y %H:%M:%S %z", localtime(&item->tm));
             if (rfc822_time != NULL)
             {
                 snprintf(buffer,sizeof(buffer),"  <pubDate>%s</pubDate>\n", rfc822_time);
@@ -1584,35 +1760,43 @@ static int action_rss( webpidgin_client_t * httpd, const char * unused )
                 client_write( httpd,buffer);
             }
         }
-        if( ( item->conv != NULL ) && ( item->conv->whom != CONV_SOURCE_SELF ))
+        if (item->what != NULL)
         {
             client_write(httpd,"  <item>\n");
-            snprintf(buffer,sizeof(buffer),"   <guid isPermaLink=\"false\">%d-%d</guid>\n",(int)item->conv->tm,item->conv->id);
+            snprintf(buffer,sizeof(buffer),"   <guid isPermaLink=\"false\">%d-%p</guid>\n",(int)item->tm,item);
             client_write(httpd,buffer);
             client_write(httpd,"   <title>");
-            snprintf(buffer,sizeof(buffer),"New Message From %s",item->conv->chat->buddy);
+            snprintf(buffer,sizeof(buffer),"New Message From %s",item->who);
             client_write(httpd,buffer);
             client_write(httpd,"</title>\n");
-        	if (my_addr != NULL)
-        	{
-                char * name = webpidgin_encode(item->conv->chat->buddy);
+            if (my_addr != NULL)
+            {       
+                /** initialize buffer qith generic link */
+                snprintf(buffer,sizeof(buffer),"http://%s:%s/", my_addr, gOptionPort);
+
+                if (item->convName) {
+                    char * name = webpidgin_encode(item->convName);
+                    if (name) {
+                        /** We have the specific link use that instead */
+                        snprintf(buffer,sizeof(buffer),"http://%s:%s/conversation?%s",my_addr,gOptionPort,name);
+                        g_free(name);
+                    }
+                }
                 client_write(httpd,"   <link>");
-                snprintf(buffer,sizeof(buffer),"http://%s:%s/chat?%s",my_addr,gOptionPort,name);
-                g_free(name);
                 client_write(httpd,buffer);
                 client_write(httpd,"</link>\n");
             }
             client_write(httpd,"   <description>");
 
             {
-                char * tmpstr = webpidgin_rss_strip_html(item->conv->message);
+                char * tmpstr = webpidgin_rss_strip_html(item->what);
                 snprintf(buffer,sizeof(buffer),"%s",tmpstr);
                 g_free( tmpstr );
             }
 
             client_write(httpd,buffer);
             client_write(httpd,"</description>\n");
-            rfc822_time = purple_utf8_strftime("%a, %d %b %Y %H:%M:%S %z", localtime(&item->conv->tm));
+            rfc822_time = purple_utf8_strftime("%a, %d %b %Y %H:%M:%S %z", localtime(&item->tm));
             if (rfc822_time != NULL)
             {
                 snprintf(buffer,sizeof(buffer),"   <pubDate>%s</pubDate>\n", rfc822_time);
@@ -1624,7 +1808,6 @@ static int action_rss( webpidgin_client_t * httpd, const char * unused )
     client_write(httpd," </channel>\n</rss>\n");
     client_write(httpd,"\n\n");
     return 1;
-#endif
 }
 
 static int action_help( webpidgin_client_t * httpd, const char * unused )
@@ -2069,9 +2252,23 @@ static void received_im_msg_cb(PurpleAccount *account, char *sender, char *buffe
     purple_debug_info("signals test", "received-im-msg (%s, %s, %s, %s, %d)\n",
                                         purple_account_get_username(account), sender, buffer,
                                         (conv != NULL) ? purple_conversation_get_name(conv) : "(null)", flags);
-
-    // Add an RSS entry for this message
+    rss_add(conv, sender, buffer);
 }
+
+/**
+ * @brief callback when a Pidgin CHAT message was received
+ */
+static void received_chat_msg_cb(PurpleAccount *account, char *sender, char *buffer,
+                                   PurpleConversation *conv, int flags, void *data)
+{
+
+    purple_debug_info("signals test", "received-chat-msg (%s, %s, %s, %s, %d)\n",
+                                        purple_account_get_username(account), sender, buffer,
+                                        (conv != NULL) ? purple_conversation_get_name(conv) : "(null)", flags);
+
+    rss_add(conv, sender, buffer);
+}
+
 
 /**
  * @brief callback when a Pidgin IM message was sent
@@ -2080,7 +2277,6 @@ static void sent_im_msg_cb(PurpleAccount *account, const char *recipient, const 
 {
     purple_debug_info("signals test", "sent-im-msg (%s, %s, %s)\n",
                                        purple_account_get_username(account), recipient, buffer);
-    // Add an RSS entry for this message
 }
 
 
@@ -2171,8 +2367,12 @@ static gboolean plugin_load(PurplePlugin *plugin)
     
     httpd_restart(webpidgin);
 
-    purple_signal_connect(purple_conversations_get_handle(), "received-im-msg",plugin, PURPLE_CALLBACK(received_im_msg_cb), NULL);
-    purple_signal_connect(purple_conversations_get_handle(), "sent-im-msg",plugin, PURPLE_CALLBACK(sent_im_msg_cb), NULL);
+    purple_signal_connect(purple_conversations_get_handle(), "received-im-msg", plugin,
+                          PURPLE_CALLBACK(received_im_msg_cb), NULL);
+    purple_signal_connect(purple_conversations_get_handle(), "sent-im-msg", plugin,
+                          PURPLE_CALLBACK(sent_im_msg_cb), NULL);
+    purple_signal_connect(purple_conversations_get_handle(), "received-chat-msg", plugin,
+                          PURPLE_CALLBACK(received_chat_msg_cb), NULL);
 
     purple_debug(PURPLE_DEBUG_INFO, "WebPidgin 2", "WebPidgin plugin loaded.\n");
     return TRUE;
@@ -2248,6 +2448,12 @@ static gboolean options_entry_cb(GtkWidget *widget, GdkEventFocus *evt, gpointer
         const char * str = gtk_entry_get_text(GTK_ENTRY(widget));
         sscanf( str,"%d",&sec);
         webpidgin_save_pref_int( (char*)data, sec );
+    }
+    else if (!strcmp(data, "font_adjust")) {
+        int size = 0;
+        const char * str = gtk_entry_get_text(GTK_ENTRY(widget));
+        sscanf( str,"%d",&size);
+        webpidgin_save_pref_int( (char*)data, size );
     }
     else
     {
@@ -2364,6 +2570,14 @@ static GtkWidget * get_config_frame(PurplePlugin *plugin)
                                      purple_prefs_get_bool("/plugins/webpidgin/use_rss_feed"));
     g_signal_connect(G_OBJECT(toggle), "toggled",
                          G_CALLBACK(type_toggle_cb), "use_rss_feed");
+
+    sg = gtk_size_group_new(GTK_SIZE_GROUP_HORIZONTAL);
+    spin_button = gaim_gtk_prefs_labeled_spin_button(vbox, _("_Font Adjust:"),
+            "/plugins/webpidgin/font_adjust", -10, 10, sg);
+    if (!purple_prefs_get_bool("/plugins/webpidgin/font_adjust"))
+        gtk_widget_set_sensitive(GTK_WIDGET(spin_button), FALSE);
+    g_signal_connect(G_OBJECT(toggle), "clicked",
+                     G_CALLBACK(gaim_gtk_toggle_sensitive), spin_button);
 
     gtk_widget_show_all(ret);
     return ret;
