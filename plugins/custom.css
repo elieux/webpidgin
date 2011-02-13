@@ -1,0 +1,72 @@
+body {
+	font-family: monospace;	
+	background: #000;
+	color: #aaa;
+}
+
+#active_chats span {
+	
+}
+
+#active_chats br{
+	margin-bottom: 3px;
+}
+
+#active_chats div{
+	display: inline-table;
+	border: 1px solid #444;
+	padding: 3px;
+	margin: 3px;	
+	background-color: #222;		
+}
+
+#active_chats .aClose{
+	float: right;
+	margin: 0px;
+	margin-left: 10px;
+	color: red;
+}
+
+.buddyin1{
+	
+}
+
+.buddyin2{
+	
+}
+
+a {color:#01E}
+
+#conversation{
+	overflow:auto; 
+	padding:5px;
+	margin:5px 0px; 
+	border:1px solid #ddd;
+	background-color:#202020;
+}
+
+.divmsgme{background-color:#234;
+	color: ff0;	
+}
+
+.divmsgother {
+	background-color:#322;
+	color: f90;
+}
+
+.divmsgsystem{background-color:#333} 
+
+.divmsgg{-moz-border-radius:10px; padding:5px; margin:2px 3px 10px 3px;}
+
+.msggroup{
+	background-color:#333;
+}
+
+hr{
+	border-style:dashed;
+}
+.taimsg{
+	background-color:#333;
+	color: #eee;
+}
+

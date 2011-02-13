@@ -2,17 +2,18 @@ webgaim.pl:
     Perl Plugin for gaim. Not recommended.
 
 webgaim.c:
-    Plugin for GAIM prior to the Pidgin change over.  This code is no longer supported, but here for people who still run the old GAIM codebase.
+    Plugin for GAIM prior to the Pidgin change over. This code is no longer supported, but here for people who still run the old GAIM codebase.
 
 webpidgin.c:
-    This is a port of webgaim.c to the Pidgin/LibPurple API. You should use this plugin from here on out.
+    This is a port of webgaim.c to the Pidgin/LibPurple API. The author hasn't had time to continue working on this project so it has not been updated in quite a while.
+
+webpidginz.c:
+    This is a fork of webpidgin.c by shaorang.
 
 Building Plugin:
 
 Linux:
     Copy the file to pidgin/plugins
-    make webpidgin.so
+    make webpidginz.so
     copy the so to your {INSTALLDIR}/lib/pidgin directory
     restart pidgin, the plugin should now show up in your plugins list.
-
-
