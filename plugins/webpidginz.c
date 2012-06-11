@@ -1077,10 +1077,19 @@ static void client_write_http_header_redirect( webpidgin_client_t * httpd , cons
 }
 
 
+/* Strings used for displaying commands */
+#define CMD_STR "Cmd"
+#define HOME_STR "Hm"
+#define UPDATE_STR "Up"
+#define ACCOUNTS_STR "Acc"
+#define OPTIONS_STR "Op"
+#define HELP_STR "?"
 
 static void client_write_cmds( webpidgin_client_t * httpd, const char *update )
 {
 	char buffer[4096];
+    char cmds_div_start[] = "<div class=\"cmd\">";
+    char cmds_div_end[] = "</div>";
 
 	if( gOptionWWWFrames )
     {
@@ -1095,7 +1104,15 @@ static void client_write_cmds( webpidgin_client_t * httpd, const char *update )
             }
             client_write(httpd, buffer);*/
 
-            g_snprintf(buffer,sizeof(buffer),"<A HREF='Status' target=\"conv\">CMD</A>: <A HREF='%s' target=\"list\">U</A> | <A HREF='/Accounts' target=\"conv\">A</A> | <A HREF='/Options' target=\"conv\">O</A> | <A HREF='/Help' target=\"conv\">?</A><HR>\n",update);
+            g_snprintf(
+              buffer, sizeof(buffer), "%s "
+              "<A HREF='Status' target=\"conv\" class=\"cmd\">%s</A>: "
+              "<A HREF='%s' target=\"list\" class=\"cmd\">%s</A> | "
+              "<A HREF='/Accounts' target=\"conv\" class=\"cmd\">%s</A> | "
+              "<A HREF='/Options' target=\"conv\" class=\"cmd\">%s</A> | "
+              "<A HREF='/Help' target=\"conv\" class=\"cmd\">%s</A> %s <HR>\n",
+              cmds_div_start, CMD_STR, update, UPDATE_STR, ACCOUNTS_STR,
+              OPTIONS_STR, HELP_STR, cmds_div_end);
         }
         else
         {
@@ -1108,7 +1125,10 @@ static void client_write_cmds( webpidgin_client_t * httpd, const char *update )
             }
             client_write(httpd, buffer);*/
             
-            g_snprintf(buffer,sizeof(buffer),"CMD: <A HREF='%s' target=\"conv\">Update</A><HR> \n",update);
+            g_snprintf(
+              buffer, sizeof(buffer),
+              "%s CMD: <A HREF='%s' target=\"conv\" class=\"cmd\">Update</A>"
+              "%s <HR>\n", cmds_div_start, update, cmds_div_end);
         }
     }
     else
@@ -1123,7 +1143,16 @@ static void client_write_cmds( webpidgin_client_t * httpd, const char *update )
         }
         client_write(httpd, buffer);*/
 
-        g_snprintf(buffer,sizeof(buffer),"<A HREF='Status'>CMD</A>: <A HREF='%s'>&nbsp;U&nbsp;</A> | <A HREF='/'>&nbsp;H&nbsp;</A> | <A HREF='/Accounts'>&nbsp;A&nbsp;</A> | <A HREF='/Options'>&nbsp;O&nbsp;</A> | <A HREF='/Help'>&nbsp;?&nbsp;</A><HR>\n",update);
+        g_snprintf(
+          buffer, sizeof(buffer),
+          "%s <A HREF='Status' class=\"cmd\">%s</A>: "
+          "<A HREF='%s' class=\"cmd\">&nbsp;%s&nbsp;</A> | "
+          "<A HREF='/' class=\"cmd\">&nbsp;%s&nbsp;</A> | "
+          "<A HREF='/Accounts' class=\"cmd\">&nbsp;%s&nbsp;</A> | "
+          "<A HREF='/Options' class=\"cmd\">&nbsp;%s&nbsp;</A> | "
+          "<A HREF='/Help' class=\"cmd\">&nbsp;%s&nbsp;</A> %s <HR>\n",
+          cmds_div_start, CMD_STR, update, UPDATE_STR, HOME_STR, ACCOUNTS_STR,
+          OPTIONS_STR, HELP_STR, cmds_div_end);
     }
 
     client_write( httpd,buffer);
@@ -1397,6 +1426,8 @@ static void show_last_sessions( webpidgin_client_t * httpd, int nsessions )
 	webpidgin_session * session;
 	int i = 0;
 
+    client_write(httpd, "<div class=\"sessions\">\n");
+    
 	if (nsessions == INT_MAX)
 		g_snprintf(buffer,1024,"<B>Last sessions:</B><BR />\n");
 	else
@@ -1407,13 +1438,14 @@ static void show_last_sessions( webpidgin_client_t * httpd, int nsessions )
 	gpointer = last_sessions;
 	while (gpointer && (i < nsessions))
 	{
-		char color[10];
 		char extra[256]="";
 
 		session = (webpidgin_session *) gpointer->data;
 
 		if (session->auth_ok)
-			g_snprintf (color, sizeof (color), "#5555DD");
+        {
+            g_snprintf(extra, sizeof(extra), "<span class=\"session_auth\">");
+        }
 		else
 		{
 			if (! gShowNoAuthSessions)
@@ -1422,11 +1454,15 @@ static void show_last_sessions( webpidgin_client_t * httpd, int nsessions )
 				continue;
 			}
 
-			g_snprintf (color, sizeof (color), "#DD5555");
-			g_snprintf (extra, sizeof (extra), "<font color='%s'><u><b> (NO AUTH) </b></u></font> ", color);
+            g_snprintf(extra, sizeof (extra), "<span class=\"session_no_auth\">"
+                       "<u><b> (NO AUTH) </b></u>");
 		}
 
-		g_snprintf(buffer,1024,"<li><font size=-1><font color='#888888'>(%s)</font> %s <font color='%s'><b>%s</b> ", purple_date_format_long(localtime ( & session->last_connection)), extra, color, session->ip_client);
+		g_snprintf(
+          buffer, sizeof(buffer), "<li><span class=\"session_details\">"
+          "(%s) %s %s",
+          purple_date_format_long(localtime(&session->last_connection)),
+          extra, session->ip_client);
 		client_write(httpd,buffer);
 
 		if (session->ip_client_xff)
@@ -1441,7 +1477,7 @@ static void show_last_sessions( webpidgin_client_t * httpd, int nsessions )
 			client_write(httpd,buffer);
 		}
 
-		client_write(httpd, "</font></font>");
+		client_write(httpd, "</span</span>");
 		client_write(httpd, "</li>\n");
 
 
@@ -1458,7 +1494,7 @@ static void show_last_sessions( webpidgin_client_t * httpd, int nsessions )
 		client_write(httpd, "<a href='Sessions'>More...</a><BR />\n");
 	}
 
-	client_write(httpd, "<HR />\n");
+	client_write(httpd, "</div><HR />\n");
 }
 
 

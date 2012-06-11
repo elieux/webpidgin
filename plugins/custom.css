@@ -1,3 +1,4 @@
+
 body {
 	font-family: sans;
 	background: #ddd;
@@ -27,23 +28,52 @@ body {
 	color: red;
 }
 
-.buddyin1{
-	
+div.cmd {
+    text-align: center;
 }
 
-.buddyin2{
-	
+.cmd {
+	border: 1px solid #bbb;
+    background-color: #bbb;
+    font-weight: bold;
 }
 
-.buddyin1_avail {
-	
+a.cmd:hover {
+	border: 1px solid blue;
+    background-color: #bbb;
 }
 
-.buddyin2_avail {
-	
+a {
+    text-decoration: none;
 }
 
-a {color:#01E}
+span.buddy_not_avail {
+	border: 1px solid #ddd;
+	padding-left: 1ex;
+    padding-right: 1ex;
+}
+
+span.buddy_not_avail:hover {
+	border: 1px solid blue;
+}
+
+a.buddy_not_avail {
+	color: blue;
+}
+
+span.buddy_avail {
+	border: 1px solid #ddd;
+	padding-left: 1ex;
+    padding-right: 1ex;
+}
+
+span.buddy_avail:hover {
+	border: 1px solid green;
+}
+
+a.buddy_avail {
+	color: green;
+}
 
 #conversation{
 	overflow:auto; 
@@ -77,4 +107,23 @@ hr{
 .taimsg{
 	background-color:#333;
 	color: #eee;
+}
+
+/* settings for last sessions list */
+div.sessions {
+    margin-top: 2em;
+    font-size: x-small;
+    font-style: italic;
+}
+
+span.session_details {
+    color: #555;
+}
+
+span.session_auth {
+    color: #111;
+}
+
+span.session_no_auth {
+    color: #f11;
 }
