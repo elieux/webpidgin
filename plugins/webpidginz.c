@@ -1088,7 +1088,7 @@ static void client_write_http_header_redirect( webpidgin_client_t * httpd , cons
 static void client_write_cmds( webpidgin_client_t * httpd, const char *update )
 {
 	char buffer[4096];
-    char cmds_div_start[] = "<div class=\"cmd\">";
+    char cmds_div_start[] = "<div class='cmd'>";
     char cmds_div_end[] = "</div>";
 
 	if( gOptionWWWFrames )
@@ -1106,11 +1106,11 @@ static void client_write_cmds( webpidgin_client_t * httpd, const char *update )
 
             g_snprintf(
               buffer, sizeof(buffer), "%s "
-              "<A HREF='Status' target=\"conv\" class=\"cmd\">%s</A>: "
-              "<A HREF='%s' target=\"list\" class=\"cmd\">%s</A> | "
-              "<A HREF='/Accounts' target=\"conv\" class=\"cmd\">%s</A> | "
-              "<A HREF='/Options' target=\"conv\" class=\"cmd\">%s</A> | "
-              "<A HREF='/Help' target=\"conv\" class=\"cmd\">%s</A> %s <HR>\n",
+              "<A HREF='Status' target=\"conv\" class='cmd'>%s</A>: "
+              "<A HREF='%s' target=\"list\" class='cmd'>%s</A> | "
+              "<A HREF='/Accounts' target=\"conv\" class='cmd'>%s</A> | "
+              "<A HREF='/Options' target=\"conv\" class='cmd'>%s</A> | "
+              "<A HREF='/Help' target=\"conv\" class='cmd'>%s</A> %s <HR>\n",
               cmds_div_start, CMD_STR, update, UPDATE_STR, ACCOUNTS_STR,
               OPTIONS_STR, HELP_STR, cmds_div_end);
         }
@@ -1127,7 +1127,7 @@ static void client_write_cmds( webpidgin_client_t * httpd, const char *update )
             
             g_snprintf(
               buffer, sizeof(buffer),
-              "%s CMD: <A HREF='%s' target=\"conv\" class=\"cmd\">Update</A>"
+              "%s CMD: <A HREF='%s' target=\"conv\" class='cmd'>Update</A>"
               "%s <HR>\n", cmds_div_start, update, cmds_div_end);
         }
     }
@@ -1145,12 +1145,12 @@ static void client_write_cmds( webpidgin_client_t * httpd, const char *update )
 
         g_snprintf(
           buffer, sizeof(buffer),
-          "%s <A HREF='Status' class=\"cmd\">%s</A>: "
-          "<A HREF='%s' class=\"cmd\">&nbsp;%s&nbsp;</A> | "
-          "<A HREF='/' class=\"cmd\">&nbsp;%s&nbsp;</A> | "
-          "<A HREF='/Accounts' class=\"cmd\">&nbsp;%s&nbsp;</A> | "
-          "<A HREF='/Options' class=\"cmd\">&nbsp;%s&nbsp;</A> | "
-          "<A HREF='/Help' class=\"cmd\">&nbsp;%s&nbsp;</A> %s <HR>\n",
+          "%s <A HREF='Status' class='cmd'>%s</A>: "
+          "<A HREF='%s' class='cmd'>&nbsp;%s&nbsp;</A> | "
+          "<A HREF='/' class='cmd'>&nbsp;%s&nbsp;</A> | "
+          "<A HREF='/Accounts' class='cmd'>&nbsp;%s&nbsp;</A> | "
+          "<A HREF='/Options' class='cmd'>&nbsp;%s&nbsp;</A> | "
+          "<A HREF='/Help' class='cmd'>&nbsp;%s&nbsp;</A> %s <HR>\n",
           cmds_div_start, CMD_STR, update, UPDATE_STR, HOME_STR, ACCOUNTS_STR,
           OPTIONS_STR, HELP_STR, cmds_div_end);
     }
@@ -1285,12 +1285,12 @@ static void webpidgin_show_buddy(webpidgin_client_t * httpd,const char * extra_h
 
 	if (!purple_presence_is_available(buddy->presence))
 	{
-		client_write(httpd, " <span class='buddy_not_avail'> ");
+		client_write(httpd, " <div class='buddy_not_avail'> ");
 		g_snprintf(extra, sizeof(extra), " class='buddy_not_avail' ");
 	}
     else // buddy is available - use a different CSS class
     {
-		client_write(httpd, " <span class='buddy_avail'> ");
+		client_write(httpd, " <div class='buddy_avail'> ");
 		g_snprintf(extra, sizeof(extra), " class='buddy_avail' ");
     }        
 
@@ -1351,9 +1351,10 @@ static void webpidgin_show_buddy(webpidgin_client_t * httpd,const char * extra_h
     }
 
     //if (!purple_presence_is_available(buddy->presence))
-    client_write(httpd, " </span> ");
+    client_write(httpd, " </div>\n");
 
-    client_write(httpd,"<BR>\n");
+    // <br> not needed if <div> is used for buddies
+    //client_write(httpd,"<BR>\n");
 
     g_free(name);
 }
@@ -1426,7 +1427,7 @@ static void show_last_sessions( webpidgin_client_t * httpd, int nsessions )
 	webpidgin_session * session;
 	int i = 0;
 
-    client_write(httpd, "<div class=\"sessions\">\n");
+    client_write(httpd, "<div class='sessions'>\n");
     
 	if (nsessions == INT_MAX)
 		g_snprintf(buffer,1024,"<B>Last sessions:</B><BR />\n");
@@ -1444,7 +1445,7 @@ static void show_last_sessions( webpidgin_client_t * httpd, int nsessions )
 
 		if (session->auth_ok)
         {
-            g_snprintf(extra, sizeof(extra), "<span class=\"session_auth\">");
+            g_snprintf(extra, sizeof(extra), "<span class='session_auth'>");
         }
 		else
 		{
@@ -1454,12 +1455,12 @@ static void show_last_sessions( webpidgin_client_t * httpd, int nsessions )
 				continue;
 			}
 
-            g_snprintf(extra, sizeof (extra), "<span class=\"session_no_auth\">"
+            g_snprintf(extra, sizeof (extra), "<span class='session_no_auth'>"
                        "<u><b> (NO AUTH) </b></u>");
 		}
 
 		g_snprintf(
-          buffer, sizeof(buffer), "<li><span class=\"session_details\">"
+          buffer, sizeof(buffer), "<li><span class='session_details'>"
           "(%s) %s %s",
           purple_date_format_long(localtime(&session->last_connection)),
           extra, session->ip_client);
@@ -2623,7 +2624,7 @@ static int action_conversation( webpidgin_client_t * httpd, const char * extra )
     	
     	if (purple_conversation_get_type(conv) == PURPLE_CONV_TYPE_IM)
 		{
-			g_snprintf(buffer,sizeof(buffer),"Chatting With:&nbsp;<b>%s</b> %s from <i>%s</i>", purple_conversation_get_title(conv), buffermail, account->username);
+			g_snprintf(buffer,sizeof(buffer),"Chatting with &nbsp;<b>%s</b> %s from <i>%s</i>", purple_conversation_get_title(conv), buffermail, account->username);
 		}else
 		{			
 			g_snprintf(buffer,sizeof(buffer),"<b>%s</b> %s from <i>%s</i>", purple_conversation_get_title(conv), buffermail, account->username);
@@ -2644,7 +2645,7 @@ static int action_conversation( webpidgin_client_t * httpd, const char * extra )
 				g_snprintf(buffermail, sizeof(buffermail), " (%s) ", buddyname);
 						
 			account = (buddy->account);
-			g_snprintf(buffer,sizeof(buffer),"Chatting With:&nbsp;<b>%s</b> %s from <i>%s</i>", get_buddy_name(buddy), buffermail, account->username);
+			g_snprintf(buffer,sizeof(buffer),"Chatting with &nbsp;<b>%s</b> %s from <i>%s</i>", get_buddy_name(buddy), buffermail, account->username);
 		}
     }
     
@@ -2682,12 +2683,12 @@ static int action_conversation( webpidgin_client_t * httpd, const char * extra )
 	    if (gUseJavascript && !gUseJSOnlyRef)
 	    {
 	    	g_snprintf(form,sizeof(form), "<form method=\"get\" action=\"/sendMessage?\" onsubmit=\"return send()\" >\n ");
-	    	g_strlcat(form, "<div>\n <textarea class='taimsg' id=\"imsg\" name=\"msg\" tabindex=\"1\" cols=\"48\" rows=\"1\" onkeyup='keyp_imsg(this)' /></textarea>\n", sizeof(form));
+	    	g_strlcat(form, "<div>\n <textarea class='chat' id=\"imsg\" name=\"msg\" tabindex=\"1\" cols=\"48\" rows=\"1\" onkeyup='keyp_imsg(this)' /></textarea>\n", sizeof(form));
 	    }
 	    else
 	    {
 	    	g_snprintf(form,sizeof(form), "<form method=\"get\" action=\"/sendMessage?\" >\n ");
-	    	g_strlcat(form, "<div>\n <input style=\"-wap-input-format: *m\" id=\"imsg\" name=\"msg\" tabindex=\"1\" size=\"48\" maxlength=\"1280\" autocomplete=\"off\" />\n", sizeof(form));
+	    	g_strlcat(form, "<div>\n <input class='chat' style=\"-wap-input-format: *m\" id=\"imsg\" name=\"msg\" tabindex=\"1\" size=\"48\" maxlength=\"1280\" autocomplete=\"off\" />\n", sizeof(form));
 	    }
 		
 
@@ -2708,7 +2709,7 @@ static int action_conversation( webpidgin_client_t * httpd, const char * extra )
     }
 
 
-	client_write(httpd,"<div id='conversation'>\n");
+	client_write(httpd,"<div class='chat' id='conversation'>\n");
     if (conv)
     {
     	show_conversation (httpd, conv);
