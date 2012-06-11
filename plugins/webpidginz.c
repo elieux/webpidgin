@@ -1259,6 +1259,11 @@ static void webpidgin_show_buddy(webpidgin_client_t * httpd,const char * extra_h
 		client_write(httpd, " <span class='buddyin2'> ");
 		g_snprintf(extra, sizeof(extra), " class='buddyin1' ");
 	}
+    else // buddy is available - use a different CSS class
+    {
+		client_write(httpd, " <span class='buddyin2_avail'> ");
+		g_snprintf(extra, sizeof(extra), " class='buddyin1_avail' ");
+    }        
 
     if (gGroupMessages)
 		g_snprintf(extra3, sizeof(extra3), "#isend");
@@ -1316,8 +1321,8 @@ static void webpidgin_show_buddy(webpidgin_client_t * httpd,const char * extra_h
 		client_write_vargs(httpd, " (%s)", purple_status_get_name (status));
     }
 
-    if (!purple_presence_is_available(buddy->presence))
-		client_write(httpd, " </span> ");
+    //if (!purple_presence_is_available(buddy->presence))
+    client_write(httpd, " </span> ");
 
     client_write(httpd,"<BR>\n");
 
