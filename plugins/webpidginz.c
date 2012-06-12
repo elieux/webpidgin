@@ -365,6 +365,35 @@ static gboolean gUseCustomCSS = 0;
 #define NUM_COLORS 12
 static char *array_colors[NUM_COLORS]={"#A4BEC8", "#55D", "#D55", "#080", "#FC0", "#952", "#F19", "#F50", "#2BA", "#D83", "#808", "#F87"};
 
+/*
+  :todo: make this a configurable parameter
+*/
+#define CUSTOM_BASE_URL "/p/msg"
+
+static char g_base_url[1024] = { CUSTOM_BASE_URL };
+
+static char g_tmp_buf[1024] = { 0 };
+static int g_tmp_size = sizeof(g_tmp_buf);
+
+
+/**
+ * Return a new URL = g_base_url + p_webpidginz_url.
+ * The new URL is allocated on heap (using strdup). The caller must free it.
+ **/
+static char * mk_url(const char *p_webpidginz_url)
+{
+    static char url[2048] = { 0 };
+    int max_len = sizeof(url) - 1;
+    url[0] = 0; // empty url buffer
+    if (g_base_url[0]) // we have a custom base URL
+    {
+        strncpy(url, g_base_url, max_len);
+        max_len = sizeof(url) - strlen(url) - 1;
+    }
+    strncat(url, p_webpidginz_url, max_len);
+    return strdup(url);
+}
+
 
 typedef struct{
     const char * name;
@@ -884,7 +913,11 @@ static void auto_accept_complete_cb(PurpleXfer *xfer, PurpleXfer *my)
 		PurpleConversation *conv=purple_find_conversation_with_account(PURPLE_CONV_TYPE_IM, xfer->who, xfer->account);
 		if(conv)
 		{
-			char *message = g_strdup_printf(_("Received file transfer of <a href='getFile?ftid=%p'>%s</a> %d completed."),xfer, xfer->filename, xfer->ref);
+            char *p_url = NULL;
+			char *message = g_strdup_printf(
+              _("Received file transfer of <a href='%s?ftid=%p'>%s</a> %d completed."),
+              p_url = mk_url("/getFile"), xfer, xfer->filename, xfer->ref);
+            free(p_url);
 			purple_conversation_write(conv, "WebPidgin-Z", message, PURPLE_MESSAGE_SYSTEM , time(NULL));
 			g_free(message);
 		}		
@@ -1085,15 +1118,22 @@ static void client_write_http_header_redirect( webpidgin_client_t * httpd , cons
 #define OPTIONS_STR "Op"
 #define HELP_STR "?"
 
+#define STATUS_URL "/Status"
+#define ACCOUNTS_URL "/Accounts"
+#define OPTIONS_URL "/Options"
+#define HELP_URL "/Help"
+#define ACTIVE_URL "/ActiveList"
+
 static void client_write_cmds( webpidgin_client_t * httpd, const char *update )
 {
 	char buffer[4096];
     char cmds_div_start[] = "<div class='cmd'>";
     char cmds_div_end[] = "</div>";
+    char *p1 = NULL, *p2 = NULL, *p3 = NULL, *p4 = NULL, *p5 = NULL;
 
 	if( gOptionWWWFrames )
     {
-        if( ( strcmp(update,"/") == 0 ) || ( strcmp(update,"/ActiveList") == 0 ) )
+        if( ( strcmp(update,"/") == 0 ) || ( strcmp(update, ACTIVE_URL) == 0 ) )
         {
             /*if (gOptionFontAdjust >= 0) 
             {
@@ -1104,15 +1144,28 @@ static void client_write_cmds( webpidgin_client_t * httpd, const char *update )
             }
             client_write(httpd, buffer);*/
 
+            p1 = mk_url(STATUS_URL);
+            p2 = mk_url(ACCOUNTS_URL);
+            p3 = mk_url(OPTIONS_URL);
+            p4 = mk_url(HELP_URL);
             g_snprintf(
               buffer, sizeof(buffer), "%s "
-              "<A HREF='Status' target=\"conv\" class='cmd'>%s</A>: "
+              "<A HREF='%s' target=\"conv\" class='cmd'>%s</A>: "
               "<A HREF='%s' target=\"list\" class='cmd'>%s</A> | "
-              "<A HREF='/Accounts' target=\"conv\" class='cmd'>%s</A> | "
-              "<A HREF='/Options' target=\"conv\" class='cmd'>%s</A> | "
-              "<A HREF='/Help' target=\"conv\" class='cmd'>%s</A> %s <HR>\n",
-              cmds_div_start, CMD_STR, update, UPDATE_STR, ACCOUNTS_STR,
-              OPTIONS_STR, HELP_STR, cmds_div_end);
+              "<A HREF='%s' target=\"conv\" class='cmd'>%s</A> | "
+              "<A HREF='%s' target=\"conv\" class='cmd'>%s</A> | "
+              "<A HREF='%s' target=\"conv\" class='cmd'>%s</A> %s <HR>\n",
+              cmds_div_start,
+              p1, CMD_STR,
+              update, UPDATE_STR,
+              p2, ACCOUNTS_STR,
+              p3, OPTIONS_STR,
+              p4, HELP_STR,
+              cmds_div_end);
+            free(p1);
+            free(p2);
+            free(p3);
+            free(p4);
         }
         else
         {
@@ -1142,17 +1195,34 @@ static void client_write_cmds( webpidgin_client_t * httpd, const char *update )
             g_snprintf(buffer,sizeof(buffer),"<FONT SIZE=%d>", gOptionFontAdjust);
         }
         client_write(httpd, buffer);*/
-
+        
+        p1 = mk_url(STATUS_URL);
+        p2 = mk_url(ACCOUNTS_URL);
+        p3 = mk_url(OPTIONS_URL);
+        p4 = mk_url(HELP_URL);
+        p5 = mk_url("/");
         g_snprintf(
           buffer, sizeof(buffer),
-          "%s <A HREF='Status' class='cmd'>%s</A>: "
+          "%s <A HREF='%s' class='cmd'>%s</A>: "
           "<A HREF='%s' class='cmd'>&nbsp;%s&nbsp;</A> | "
-          "<A HREF='/' class='cmd'>&nbsp;%s&nbsp;</A> | "
-          "<A HREF='/Accounts' class='cmd'>&nbsp;%s&nbsp;</A> | "
-          "<A HREF='/Options' class='cmd'>&nbsp;%s&nbsp;</A> | "
-          "<A HREF='/Help' class='cmd'>&nbsp;%s&nbsp;</A> %s <HR>\n",
-          cmds_div_start, CMD_STR, update, UPDATE_STR, HOME_STR, ACCOUNTS_STR,
-          OPTIONS_STR, HELP_STR, cmds_div_end);
+          "<A HREF='%s' class='cmd'>&nbsp;%s&nbsp;</A> | "
+          "<A HREF='%s' class='cmd'>&nbsp;%s&nbsp;</A> | "
+          "<A HREF='%s' class='cmd'>&nbsp;%s&nbsp;</A> | "
+          "<A HREF='%s' class='cmd'>&nbsp;%s&nbsp;</A> %s <HR>\n",
+          cmds_div_start,
+          p1, CMD_STR,
+          update, UPDATE_STR,
+          p5, HOME_STR,
+          p2, ACCOUNTS_STR,
+          p3, OPTIONS_STR,
+          p4, HELP_STR,
+          cmds_div_end);
+
+        free(p1);
+        free(p2);
+        free(p3);
+        free(p4);
+        free(p5);
     }
 
     client_write( httpd,buffer);
@@ -1163,15 +1233,24 @@ static void client_write_cmds( webpidgin_client_t * httpd, const char *update )
 static void client_write_header( webpidgin_client_t * httpd, const char *update )
 {
     char buffer[4096];
+    char *p_url = NULL;
     client_write_http_header( httpd );
     client_write( httpd,"<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">\n");
     client_write( httpd,"<html>\n");
     client_write( httpd," <head>\n");    
     client_write( httpd," <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" />\n");
     client_write( httpd," <meta http-equiv=\"Pragma\" content=\"no-cache\">\n");
-    client_write( httpd,"  <link rel=\"shortcut icon\" href=\"favicon.ico\" type=\"image/x-icon\" />\n");
-    
-    client_write( httpd,"  <link rel=\"icon\" href=\"favicon.ico\" type=\"image/x-icon\" />\n");        
+    g_snprintf(g_tmp_buf, g_tmp_size,
+               "  <link rel=\"shortcut icon\" href=\"%s\" type=\"image/x-icon\" />\n",
+               p_url = mk_url("/favicon.ico"));
+    free(p_url);
+    client_write( httpd, g_tmp_buf);
+
+    g_snprintf(g_tmp_buf, g_tmp_size,
+               "  <link rel=\"icon\" href=\"%s\" type=\"image/x-icon\" />\n",
+               p_url = mk_url("/favicon.ico"));
+    free(p_url);
+    client_write( httpd, g_tmp_buf);
     
     client_write( httpd,"<style type='text/css'>");
     client_write( httpd,".logo{margin:5px 10px; float:left; border:1px solid black} #divError{}\n\
@@ -1187,7 +1266,14 @@ a {color:#01E} .msggroup{color:#fff; padding:2px 5px; -moz-border-radius:7px; } 
 	
 	///custom css
 	if (gUseCustomCSS)
-		client_write( httpd,"  <link rel=\"stylesheet\" type=\"text/css\" href=\"custom.css\" />\n");    
+        {
+            char *p_url = NULL;
+            g_snprintf(g_tmp_buf, g_tmp_size,
+                       "  <link rel=\"stylesheet\" type=\"text/css\" href=\"%s\" />\n",
+                       p_url = mk_url("/custom.css"));
+            free(p_url);
+		client_write( httpd, g_tmp_buf);
+        }
 
     if ( gOptionMetaRefresh && !gUseJavascript )
     {
@@ -1229,10 +1315,10 @@ a {color:#01E} .msggroup{color:#fff; padding:2px 5px; -moz-border-radius:7px; } 
 
         // Only refresh on root, active, chat, and status pages
         if( ( strcmp(update,"/") == 0 ) ||
-            ( strcmp(update,"/ActiveList") == 0 ) ||
+            ( strcmp(update, ACTIVE_URL) == 0 ) ||
             //We don't want chat auto refreshing when using frames
             ( ( strstr(update,"/chat") != NULL ) && ( gOptionWWWFrames == 0 ) ) ||
-            ( strstr(update,"/Status") != NULL ) || (strstr(update,"/conversation") != NULL ))
+            ( strstr(update, STATUS_URL) != NULL ) || (strstr(update,"/conversation") != NULL ))
         {
             g_snprintf(buffer,sizeof(buffer),"  <meta http-equiv=\"refresh\" content=\"%d\">\n",gLastRefreshInterval);
             client_write( httpd,buffer);
@@ -1244,12 +1330,12 @@ a {color:#01E} .msggroup{color:#fff; padding:2px 5px; -moz-border-radius:7px; } 
     //
     //  If we Are In Frames We Behave Differently!!
     //
-    if( gOptionWWWFrames && ( strcmp(update,"/") == 0  || strcmp(update,"/ActiveList") == 0 ) )
+    if( gOptionWWWFrames && ( strcmp(update,"/") == 0  || strcmp(update, ACTIVE_URL) == 0 ) )
         client_write( httpd,"<body bgcolor=#EEEEEE>\n");
     else
         client_write( httpd,"<body>\n");
 
-	client_write_cmds( httpd, update );
+    client_write_cmds( httpd, update);
 }
 
 /**
@@ -1274,6 +1360,7 @@ static void webpidgin_show_buddy(webpidgin_client_t * httpd,const char * extra_h
     char extra[128]= "";
     char extra3[128]= "";
     time_t idle_secs ;
+    char *p_url = NULL;
 
 	//const char * proto = purple_account_get_protocol_name( buddy->account );
 	//client_write(httpd, proto);
@@ -1299,7 +1386,10 @@ static void webpidgin_show_buddy(webpidgin_client_t * httpd,const char * extra_h
 
     //g_snprintf(buffer,sizeof(buffer),"&nbsp;&nbsp; <A HREF=\"conversation?%s%s%s\" %s %s>%s</A>", time_stamp(), name, extra3, extra, extra_html, alias);
     //g_snprintf(buffer,sizeof(buffer),"&nbsp;&nbsp; <A HREF=\"conversation?%s%s\" %s %s>%s</A>", name, extra3, extra, extra_html, alias);
-    g_snprintf(buffer,sizeof(buffer),"&nbsp;&nbsp; <A HREF=\"conversation?bd=%p%s\" title=\"%s\" %s %s>%s</A>", buddy, extra3, name, extra, extra_html, alias);
+    g_snprintf(buffer,sizeof(buffer),"&nbsp;&nbsp; <A HREF=\"%s?bd=%p%s\" title=\"%s\" %s %s>%s</A>",
+               p_url = mk_url("/conversation"), buddy, extra3, name, extra,
+               extra_html, alias);
+    free(p_url);
     client_write(httpd,buffer);
 
     if (gOptionStatusMessages)
@@ -1406,8 +1496,12 @@ static void webpidgin_buddy_list_walk( webpidgin_client_t * httpd,const char * e
             case PURPLE_BLIST_CHAT_NODE:{
                 PurpleChat * chat = (PurpleChat*)node;
                 const char * name = purple_chat_get_name(chat);
+                char *p_url = NULL;
                 //g_snprintf(buffer,sizeof(buffer),"&nbsp;&nbsp; <A HREF=conversation?%s%s %s>%s</A><BR>",time_stamp(),name,extra_html,name);
-                client_write_vargs(httpd, "&nbsp;&nbsp; <A HREF=conversation?%s%s %s>%s</A><BR>",time_stamp(),name,extra_html,name);
+                client_write_vargs(httpd, "&nbsp;&nbsp; <A HREF=\"%s?%s%s\" %s>%s</A><BR>",
+                                   p_url = mk_url("/conversation"),
+                                   time_stamp(), name, extra_html, name);
+                free(p_url);
             }break;
 
             default :
@@ -1492,7 +1586,11 @@ static void show_last_sessions( webpidgin_client_t * httpd, int nsessions )
 
 	if (i == nsessions && gpointer)
 	{
-		client_write(httpd, "<a href='Sessions'>More...</a><BR />\n");
+        char *p_url = NULL;
+        snprintf(g_tmp_buf, g_tmp_size, "<a href='%s'>More...</a><BR />\n",
+                 p_url = mk_url("/Sessions"));
+        free(p_url);
+		client_write(httpd, g_tmp_buf);
 	}
 
 	client_write(httpd, "</div><HR />\n");
@@ -1559,7 +1657,8 @@ static const char* get_active_chats(char * hash)
 
         PurpleBuddy * buddy;
 		PurpleStatus *status = NULL;
-
+        char *p_url = NULL;
+        
         conv = (PurpleConversation *)cnv->data;
         name =  purple_conversation_get_name(conv);
 		title =  purple_conversation_get_title(conv);
@@ -1605,17 +1704,28 @@ static const char* get_active_chats(char * hash)
 		///concateno antes del cambio de estado
 		g_strlcat(bufferhash, punt,sizeof(bufferhash));
 
-		g_snprintf(buffer,sizeof(buffer)," \n<div><A class=\"aClose\" HREF=\"sendMessage?to=id=%p&msg=%%2Fwp+quit\" title=\"Close\">X</A> ", conv);
+		g_snprintf(buffer,sizeof(buffer),
+                           " \n<div><A class=\"aClose\" HREF=\"%s?to=id=%p&msg=%%2Fwp+quit\" title=\"Close\">X</A> ",
+                           p_url = mk_url("/sendMessage"), conv);
+        free(p_url);
 		g_strlcat(ret, buffer, sizeof(ret));
 
         g_snprintf(buffer,sizeof(buffer),"<span %s>", extra);
         g_strlcat(ret, buffer, sizeof(ret));
 
-        g_snprintf(buffer,sizeof(buffer),"<A HREF=\"conversation?id=%p%s\" %s title=\"%s\" %s>%s</A> (%d/%d)", conv, extra3, extra2, name, extra_html, title, unseen_count, totalm);
+        g_snprintf(buffer,sizeof(buffer),
+                   "<A HREF=\"%s?id=%p%s\" %s title=\"%s\" %s>%s</A> (%d/%d)",
+                   p_url = mk_url("/conversation"), conv, extra3, extra2, name,
+                   extra_html, title, unseen_count, totalm);
+        free(p_url);
         g_strlcat(ret, buffer, sizeof(ret));
 
 		///concateno sin contar los cambios de estado para el hash
-		g_snprintf(buffer,sizeof(buffer),"<A HREF=\"conversation?id=%p%s\" title=\"%s\" %s>%s</A> (%d/%d)", conv, extra3, name, extra_html, title, unseen_count, totalm);
+		g_snprintf(buffer,sizeof(buffer),
+                   "<A HREF=\"%s?id=%p%s\" title=\"%s\" %s>%s</A> (%d/%d)",
+                   p_url = mk_url("/conversation"), conv, extra3, name,
+                   extra_html, title, unseen_count, totalm);
+        free(p_url);
         g_strlcat(bufferhash, buffer, sizeof(bufferhash));
 
 
@@ -1698,10 +1808,11 @@ static void show_active_list( webpidgin_client_t * httpd)
 
 static int action_active_list( webpidgin_client_t * httpd, const char * notused )
 {
+    char *p_url = NULL;
     purple_debug_info("WebPidgin 2","%s\n",__FUNCTION__);
 
-    client_write_header( httpd,"/ActiveList" );
-
+    client_write_header( httpd, p_url = mk_url(ACTIVE_URL) );
+    free(p_url);
 
     client_write(httpd,"<div id='active_chats'>\n");
     show_active_chats( httpd , NULL);
@@ -1782,6 +1893,7 @@ static int webpidgin_get_param_int( const char *data, const char * param )
 static int action_options( webpidgin_client_t * httpd, const char * extra )
 {
     char buffer[1024];
+    char *p_url = NULL;
 
     if( extra != NULL && (strlen(extra) > 0 ) )
     {
@@ -1841,13 +1953,18 @@ static int action_options( webpidgin_client_t * httpd, const char * extra )
 
         webpidgin_load_pref();
         //return action_root(httpd,NULL); // return to root page after preferences saved & reloaded
-        client_write_http_header_redirect(httpd, "/");
+        client_write_http_header_redirect(httpd, p_url = mk_url("/"));
+        free(p_url);
         return 1;
     }
 
-    client_write_header( httpd,"/Options" );
+    client_write_header( httpd, mk_url(OPTIONS_URL) );
     client_write(httpd,"<B>WebServer Options:</B><BR>\n");
-    client_write(httpd,"<form method=\"get\" target=\"_top\" action=\"/Options?\">\n");
+    g_snprintf(buffer, sizeof(buffer),
+               "<form method=\"get\" target=\"_top\" action=\"%s?\">\n",
+               p_url = mk_url(OPTIONS_URL));
+    free(p_url);
+    client_write(httpd, buffer);
     client_write(httpd,"<div>\n");
 
     ///
@@ -1953,7 +2070,9 @@ static int action_accounts( webpidgin_client_t * httpd, const char * notused )
     int accountCount = 0;
     char buffer[4096]; 
     GList *account_iter = NULL;
-    client_write_header( httpd,"/Accounts" );
+    char *p_url = NULL;
+    client_write_header( httpd, p_url = mk_url(ACCOUNTS_URL));
+    free(p_url);
     client_write(httpd,"Accounts:<BR>\n");
 
     for (account_iter = purple_accounts_get_all() ; account_iter != NULL ; account_iter = account_iter->next)
@@ -1962,6 +2081,7 @@ static int action_accounts( webpidgin_client_t * httpd, const char * notused )
         const char * user  = purple_account_get_username( ( (PurpleAccount*) account_iter->data ) );
         const char * proto = purple_account_get_protocol_name( ( (PurpleAccount*) account_iter->data ) );
         char display[1024];
+        char *p_url = NULL;
 
         accountCount++;
         g_snprintf(display,1024,"%s (%s)",user,proto);
@@ -1973,16 +2093,18 @@ static int action_accounts( webpidgin_client_t * httpd, const char * notused )
         if( purple_account_is_connected( (PurpleAccount*) account_iter->data ) )
         {
             purple_debug_info("WebPidgin 2","[%s] connected\n",display);
-            g_snprintf(buffer,sizeof(buffer),"&nbsp;<A HREF=logout?%s&%s target=\"_top\">(logout)</A> %s<BR>\n",
-                                 encoded_user,proto,display);
+            g_snprintf(buffer,sizeof(buffer),"&nbsp;<A HREF=\"%s?%s&%s\" target=\"_top\">(logout)</A> %s<BR>\n",
+                       p_url = mk_url("/logout"), encoded_user,proto,display);
+            free(p_url);
 
             client_write(httpd,buffer);
         }
         else
         {
             purple_debug_info("WebPidgin 2","[%s] disconnected\n",display);
-            g_snprintf(buffer,sizeof(buffer),"&nbsp;<A HREF=login?%s&%s target=\"_top\">(login)</A> %s<BR>\n",
-                            encoded_user,proto,display);
+            g_snprintf(buffer,sizeof(buffer),"&nbsp;<A HREF=\"%s?%s&%s\" target=\"_top\">(login)</A> %s<BR>\n",
+                       p_url = mk_url("/login"), encoded_user,proto,display);
+            free(p_url);
             client_write( httpd,buffer);
         }
         g_free(encoded_user);
@@ -1993,7 +2115,10 @@ static int action_accounts( webpidgin_client_t * httpd, const char * notused )
     while (tmp)
     {
     	webpidgin_emails *em = tmp->data;
-    	g_snprintf(buffer,1280,"c:%d/%d u:%s <a href='%s'>url</a><br>", em->count_new, em->count, em->to, em->url);
+        char *p_url = NULL;
+    	g_snprintf(buffer,1280,"c:%d/%d u:%s <a href='%s'>url</a><br>",
+                   em->count_new, em->count, em->to, p_url = mk_url(em->url));
+        free(p_url);
     	client_write(httpd,buffer);
     	tmp=tmp->next;
     }
@@ -2010,6 +2135,7 @@ static int action_accounts( webpidgin_client_t * httpd, const char * notused )
  */
 static int action_root( webpidgin_client_t * httpd, const char * notused )
 {
+    char *p_url = NULL;
     if( gOptionWWWFrames )
     {
         client_write_http_header( httpd );
@@ -2017,12 +2143,28 @@ static int action_root( webpidgin_client_t * httpd, const char * notused )
         client_write( httpd,"<html>\n");
         client_write( httpd," <head>\n");
         client_write( httpd,"  <title>WebPidginZ</title>\n");
-        client_write( httpd,"  <link rel=\"shortcut icon\" href=\"/favicon.ico\" type=\"image/x-icon\" />\n");    
+        g_snprintf(g_tmp_buf, g_tmp_size,
+                   "  <link rel=\"shortcut icon\" href=\"%s\" type=\"image/x-icon\" />\n",
+                   p_url = mk_url("/favicon.ico"));
+        free(p_url);
+        client_write( httpd, g_tmp_buf);    
         client_write( httpd,"  <noframes><body>Your browser can not handle frames.<BR>\n");
-        client_write( httpd,"  Please <A HREF=/Options>click here</A> and uncheck Enable Frames</body></noframes>\n");
+        g_snprintf(g_tmp_buf, g_tmp_size,
+                   "  Please <A HREF=\"%s\">click here</A> and uncheck Enable Frames</body></noframes>\n",
+                   p_url = mk_url(OPTIONS_URL));
+        free(p_url);
+        client_write( httpd, g_tmp_buf);
         client_write( httpd,"   <FRAMESET COLS=\"20%, *\" BORDER=1 ID=fs1>");
-        client_write( httpd,"    <FRAME SRC=\"/ActiveList\" NAME=\"list\">");
-        client_write( httpd,"    <FRAME SRC=\"/Status\" NAME=\"conv\">");
+        g_snprintf(g_tmp_buf, g_tmp_size,
+                   "    <FRAME SRC=\"%s\" NAME=\"list\">",
+                   p_url = mk_url(ACTIVE_URL));
+        free(p_url);
+        client_write( httpd, g_tmp_buf);
+        g_snprintf(g_tmp_buf, g_tmp_size,
+                   "    <FRAME SRC=\"%s\" NAME=\"conv\">",
+                   p_url = mk_url(STATUS_URL));
+        free(p_url);
+        client_write( httpd, g_tmp_buf);
         client_write( httpd,"   </FRAMESET>");
         client_write( httpd," </head>\n");
         client_write( httpd,"</html>\n");
@@ -2071,6 +2213,7 @@ static int action_login( webpidgin_client_t * httpd, const char * extra )
 {
     char * decoded = NULL;
     PurpleAccount * account;
+    char *p_url = NULL;
     purple_debug_info("WebPidgin 2","%s (%s)\n",__FUNCTION__,extra);
 
     decoded = webpidgin_normalize( extra );
@@ -2090,7 +2233,8 @@ static int action_login( webpidgin_client_t * httpd, const char * extra )
 #endif
 */
     //return action_root(httpd,NULL); // return to root page
-    client_write_http_header_redirect(httpd, "/");
+    client_write_http_header_redirect(httpd, p_url = mk_url("/"));
+    free(p_url);
 	return 1;
 }
 
@@ -2101,6 +2245,7 @@ static int action_logout( webpidgin_client_t * httpd, const char * extra )
 {
     char * decoded = NULL;
     PurpleAccount * account;
+    char *p_url = NULL;
     purple_debug_info("WebPidgin 2","%s (%s)\n",__FUNCTION__,extra);
     decoded = webpidgin_normalize( extra );
     account=find_account(decoded);
@@ -2112,7 +2257,8 @@ static int action_logout( webpidgin_client_t * httpd, const char * extra )
     }
     
     //return action_root(httpd,NULL); // return to root page
-    client_write_http_header_redirect(httpd, "/");
+    client_write_http_header_redirect(httpd, p_url = mk_url("/"));
+    free(p_url);
 	return 1;
 }
 
@@ -2528,8 +2674,13 @@ static void show_ajax_engine ( webpidgin_client_t * httpd )
 		client_write(httpd,"\n<script type=\"text/javascript\" src=\"swf.js\"></script>\n");		
 	}
 
-	client_write(httpd,"<script type=\"text/javascript\">var reqU = newxmlhttpreq(); var reqU2 =newxmlhttpreq(); \
-		var title1=document.title; var timeout=100; var urlbase= location.protocol + '//' + location.host + '/';");
+    g_snprintf(g_tmp_buf,g_tmp_size,
+               "<script type=\"text/javascript\">var reqU = newxmlhttpreq();"
+               " var reqU2 =newxmlhttpreq(); var title1=document.title;"
+               " var timeout=100; var urlbase= location.protocol + "
+               "'//' + location.host + '/' + '%s' + '/';",
+               mk_url(""));
+	client_write(httpd, g_tmp_buf);
 	
 	client_write_vargs(httpd, "\nfunction get(req, page, fready){ try { \
 			req.open('GET', page, true); req.onreadystatechange=function(){if (checkstatus(req)) eval (fready)}; \
@@ -2605,6 +2756,7 @@ static int action_conversation( webpidgin_client_t * httpd, const char * extra )
     char imgbuddyicon[1024]="";
     PurpleConversation *conv;
     PurpleAccount * account = NULL;
+    const char *p_url = NULL;
 
     purple_debug_info("WebPidgin 2","conversation::Extra[%s]\n",extra);
 
@@ -2652,8 +2804,8 @@ static int action_conversation( webpidgin_client_t * httpd, const char * extra )
     if (!account)
 	{
 		//return action_root(httpd, extra);
-		
-		client_write_http_header_redirect (httpd, "ActiveList");
+		client_write_http_header_redirect (httpd, p_url = mk_url(ACTIVE_URL));
+        free(p_url);
 		return 1;
 	}		    
     
@@ -2664,9 +2816,13 @@ static int action_conversation( webpidgin_client_t * httpd, const char * extra )
 		
 
     if (gGroupMessages)
-    	g_snprintf(header,sizeof(header),"/conversation?%s%s#isend",time_stamp(),extra);
+    	g_snprintf(header, sizeof(header), 
+                   p_url = mk_url("/conversation?%s%s#isend"),
+                   time_stamp(), extra);
     else
-    	g_snprintf(header,sizeof(header),"/conversation?%s%s",time_stamp(),extra);
+    	g_snprintf(header,sizeof(header),
+                   p_url = mk_url("/conversation?%s%s"),time_stamp(),extra);
+    free(p_url);
     client_write_header( httpd,header);
 	
 	if (!gGroupMessages)
@@ -2682,12 +2838,16 @@ static int action_conversation( webpidgin_client_t * httpd, const char * extra )
     {    	
 	    if (gUseJavascript && !gUseJSOnlyRef)
 	    {
-	    	g_snprintf(form,sizeof(form), "<form method=\"get\" action=\"/sendMessage?\" onsubmit=\"return send()\" >\n ");
+                g_snprintf(form,sizeof(form), "<form method=\"get\" action=\"%s\" onsubmit=\"return send()\" >\n ",
+                           p_url = mk_url("/sendMessage?"));
+                free(p_url);
 	    	g_strlcat(form, "<div>\n <textarea class='chat' id=\"imsg\" name=\"msg\" tabindex=\"1\" cols=\"48\" rows=\"1\" onkeyup='keyp_imsg(this)' /></textarea>\n", sizeof(form));
 	    }
 	    else
 	    {
-	    	g_snprintf(form,sizeof(form), "<form method=\"get\" action=\"/sendMessage?\" >\n ");
+	    	g_snprintf(form,sizeof(form), "<form method=\"get\" action=\"%s\" >\n ",
+                           p_url = mk_url("/sendMessage?"));
+            free(p_url);
 	    	g_strlcat(form, "<div>\n <input class='chat' style=\"-wap-input-format: *m\" id=\"imsg\" name=\"msg\" tabindex=\"1\" size=\"48\" maxlength=\"1280\" autocomplete=\"off\" />\n", sizeof(form));
 	    }
 		
@@ -3233,14 +3393,15 @@ static int action_sendMessage( webpidgin_client_t * httpd, const char * extra )
     if (c)
 	{
 		char buffer[4096];
-		
+		char *p_url = NULL;
+        
 		if (gGroupMessages)
 			g_snprintf(buffer, sizeof(buffer), "/conversation?%sid=%p#isend",time_stamp(),c);
 		else
 			g_snprintf(buffer, sizeof(buffer), "/conversation?%sid=%p",time_stamp(),c);
 
-		client_write_http_header_redirect (httpd, buffer);
-
+		client_write_http_header_redirect (httpd, p_url = mk_url(buffer));
+        free(p_url);
 		return 1;
 	}else
 		return action_active_list(httpd,NULL);
@@ -3249,8 +3410,10 @@ static int action_sendMessage( webpidgin_client_t * httpd, const char * extra )
 
 static int action_sessions( webpidgin_client_t * httpd, const char * extra )
 {
+    char *p_url = NULL;
 	purple_debug_info("WebPidgin 2","%s\n",__FUNCTION__);
-    client_write_header( httpd,"/Sessions" );
+    client_write_header( httpd, p_url = mk_url("/Sessions"));
+    free(p_url);
 	show_last_sessions (httpd, INT_MAX);
 	client_write_tail( httpd );
 	return 1;
@@ -3488,9 +3651,8 @@ static int action_getfileTransfer( webpidgin_client_t * httpd, const char * extr
 {	
 	GHashTable* vars = parse_get_extra(extra);
 	gpointer p;
-	const char * name;	
-	size_t tam;
-	
+	//const char * name;	
+	//size_t tam;
 	
 	purple_debug_info("WebPidgin 2","%s\n",__FUNCTION__);	
 	purple_debug_info("WebPidgin 2-SHAOI","%s\n", extra);
@@ -3675,14 +3837,15 @@ static int action_history( webpidgin_client_t * httpd, const char * extra )
     char buffer[1024];
     PurpleBuddy *buddy = NULL;
     char * name;
+    char *p_url = NULL;
 
     name = webpidgin_normalize( extra );
     buddy = find_buddy( name );
 
 
     g_snprintf(buffer,1024,"/history?%s%s",time_stamp(),extra);
-    client_write_header( httpd,buffer);
-
+    client_write_header( httpd, p_url = mk_url(buffer));
+    free(p_url);
 
     if( buddy && buddy->account )
     {
@@ -3737,8 +3900,10 @@ static int action_status( webpidgin_client_t * httpd, const char * unused )
 {
     char buffer[1024];
     const char * my_addr = NULL;
+    char *p_url = NULL;
     g_snprintf(buffer,1024,"/Status?%s",time_stamp());
-    client_write_header( httpd,buffer);
+    client_write_header( httpd, p_url = mk_url(buffer));
+    free(p_url);
         
 	client_write(httpd,"<img src='logo.png' class='logo'/>\n");
     client_write(httpd,"WebPidgin-Z Version: ");
@@ -3889,12 +4054,14 @@ static int action_rss( webpidgin_client_t * httpd, const char * unused )
 	const char *my_addr = NULL;
 	const char *rfc822_time = NULL;
     char buffer[1024];
+    char *p_url = NULL;
 
     purple_debug_info("WebPidgin 2","%s\n",__FUNCTION__);
 
     if( gOptionRSSFeed == 0 )
     {
-        client_write_header( httpd,"/status.rss");
+        client_write_header( httpd, p_url = mk_url("/status.rss"));
+        free(p_url);
         client_write(httpd,"<B>RSS Feed is Disabled</B>\n");
         client_write_tail(httpd);
         return 1;
@@ -3997,8 +4164,10 @@ static int action_help( webpidgin_client_t * httpd, const char * unused )
 {
     const char * my_addr = NULL;
     char buffer[1024];
+    char *p_url = NULL;
     g_snprintf(buffer,1024,"/Help?%s",time_stamp());
-    client_write_header( httpd,buffer);
+    client_write_header( httpd, p_url = mk_url(buffer));
+    free(p_url);
     client_write(httpd,"<B>Help:</B><BR><BR>\n");
         
     client_write(httpd,"1. <B>RSS Feed</B>\n");
@@ -4052,17 +4221,17 @@ static int action_help( webpidgin_client_t * httpd, const char * unused )
 static webpidgin_parse_t webpidgin_actions[] = {
 	{ "/ajax",action_ajax },
     { "/", action_root },
-    { "/ActiveList", action_active_list },
+    { ACTIVE_URL, action_active_list },
     { "/login",action_login },
     { "/logout",action_logout },
     { "/conversation",action_conversation },
     { "/sendMessage",action_sendMessage },
-    { "/Accounts",action_accounts },
-    { "/Options",action_options },    
+    { ACCOUNTS_URL ,action_accounts },
+    { OPTIONS_URL ,action_options },    
     { "/history",action_history },
-    { "/Status",action_status },
+    { STATUS_URL ,action_status },
     { "/status.rss",action_rss },
-    { "/Help", action_help },
+    { HELP_URL, action_help },
     { "/Sessions", action_sessions },
     { "/image", action_image },    
     { "/getFile", action_getfileTransfer },
@@ -4612,8 +4781,10 @@ static void client_request_cb(gpointer data, gint sock, PurpleInputCondition con
     vret = client_parse_and_dispatch( httpd, buffer,len );
     if( ! vret )
     {
+        char *p_url = NULL;
         purple_debug_info("WebPidgin 2","unknown request\n");
-        client_write_header( httpd,"/" );
+        client_write_header( httpd, p_url = mk_url("/"));
+        free(p_url);
         client_write(httpd,"Borked: WebPidgin was handed a URL it does not know how to handle. ( Closing Session )");
         client_write_tail( httpd );
         purple_input_remove(httpd->watcher );

@@ -54,13 +54,13 @@ div.buddy_not_avail {
 a.buddy_not_avail {
     padding-left: 0.1ex;
     padding-right: 0.1ex;
-	color: #008;
+	color: #800000;
 	border: 1px solid #dddddd;
-    border-color: #dddddd #dddddd #008 #dddddd;
+    border-color: #dddddd #dddddd #800000 #dddddd;
 }
 
 a.buddy_not_avail:hover {
-	border: 1px solid #008;
+	border: 1px solid #800000;
 }
 
 div.buddy_avail {
