@@ -365,12 +365,7 @@ static gboolean gUseCustomCSS = 0;
 #define NUM_COLORS 12
 static char *array_colors[NUM_COLORS]={"#A4BEC8", "#55D", "#D55", "#080", "#FC0", "#952", "#F19", "#F50", "#2BA", "#D83", "#808", "#F87"};
 
-/*
-  :todo: make this a configurable parameter
-*/
-#define CUSTOM_BASE_URL "/p/msg"
-
-static char g_base_url[1024] = { CUSTOM_BASE_URL };
+static char g_base_url[1024] = { 0 };
 
 static char g_tmp_buf[1024] = { 0 };
 static int g_tmp_size = sizeof(g_tmp_buf);
@@ -525,6 +520,10 @@ static void webpidgin_load_pref()
     gOptionShowSmileys= purple_prefs_get_bool("/plugins/webpidgin/show_smileys");
     gUseSounds= purple_prefs_get_bool("/plugins/webpidgin/use_sounds");
     gUseCustomCSS= purple_prefs_get_bool("/plugins/webpidgin/use_custom_css");
+    const char *p = NULL;
+    if ((p = purple_prefs_get_string("/plugins/webpidgin/base_url"))) {
+        strncpy(g_base_url, p, sizeof(g_base_url)-1);
+    }
 }
 
 /**
@@ -545,6 +544,15 @@ static void webpidgin_save_pref_int( const char * pref, int value )
     purple_prefs_set_int(gcPref, value );
     purple_debug_info("WebPidgin 2","Saved-Pref: %s = [%d]\n",pref, value);
 }
+
+static void webpidgin_save_pref_string(const char *p_pref, const char *p_value)
+{
+    gchar gcPref[256];
+    g_snprintf(gcPref, sizeof(gcPref), "/plugins/webpidgin/%s",  p_pref);
+    purple_prefs_set_string(gcPref, p_value);
+    purple_debug_info("WebPidgin 2","Saved-Pref: %s = [%s]\n", p_pref, p_value);
+}
+
 
 static const char* md5sum(const char* data)
 {
@@ -1890,6 +1898,36 @@ static int webpidgin_get_param_int( const char *data, const char * param )
 }
 
 
+/**
+ * The value of the parameter is allocated using malloc().
+ **/
+static const char* webpidgin_get_param_string(
+  const char *data, const char *param)
+{
+	char *key = NULL;
+	char search[255];
+
+    /// in forms, the = always follows making this key unique
+	g_snprintf(search, 255, "%s=", param); 
+
+    /// If a form object has the named key then we are indeed selected
+    key = strstr(data, search );
+    if( ! key )
+        return NULL;
+
+    const char *p_value_start = strchr(key, '=');
+    const char *p_value_end = strchr(key, '&');
+    int len = p_value_end - p_value_start + 1;
+    const char *p_value = malloc(len + 1);
+    memset(p_value, 0, len + 1);
+    strncpy(p_value, p_value_start, len);
+
+    purple_debug_info("WebPidgin 2","search=[%s] in=[%s] value=[%s]\n",
+                      search, key, p_value);
+    return p_value;
+}
+
+
 static int action_options( webpidgin_client_t * httpd, const char * extra )
 {
     char buffer[1024];
@@ -2052,6 +2090,11 @@ static int action_options( webpidgin_client_t * httpd, const char * extra )
     client_write(httpd,buffer);
     
     g_snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=use_custom_css %s>Use custom.css file<BR>\n",gUseCustomCSS ? "checked" : "");
+    client_write(httpd,buffer);
+
+    g_snprintf(buffer, 1024, "&nbsp;&nbsp;Base URL: "
+               "<input type=text value=\"%s\" name=\"base_url\"><BR>\n",
+               g_base_url);
     client_write(httpd,buffer);
 
     client_write(httpd,"<BR>\n");
@@ -5218,6 +5261,10 @@ static gboolean options_entry_cb(GtkWidget *widget, GdkEventFocus *evt, gpointer
         sscanf( str,"%d",&size);
         webpidgin_save_pref_int( (char*)data, size );
     }
+    else if (!strcmp(data, "base_url")) {
+        webpidgin_save_pref_string("base_url", 
+                                   gtk_entry_get_text(GTK_ENTRY(widget)));
+    }
     else
     {
         purple_debug_info("WebPidgin 2","UNHANDLED [%s]\n",(char*)data);
@@ -5331,6 +5378,17 @@ static GtkWidget * get_config_frame(PurplePlugin *plugin)
                                      purple_prefs_get_bool("/plugins/webpidgin/save_connection_log"));
     g_signal_connect(G_OBJECT(toggle), "toggled",
                          G_CALLBACK(type_toggle_cb), "save_connection_log");
+
+    /* base URL */
+    frame = pidgin_make_frame(tab, _("Base URL:"));
+    vbox = gtk_vbox_new(FALSE, 5);
+    gtk_container_add(GTK_CONTAINER(frame), vbox);
+    entry = gtk_entry_new();
+    gtk_box_pack_start(GTK_BOX(vbox), entry, FALSE, FALSE, 0);
+    gtk_entry_set_max_length(GTK_ENTRY(entry), 32);
+    gtk_entry_set_text(GTK_ENTRY(entry), purple_prefs_get_string("/plugins/webpidgin/base_url"));
+    g_signal_connect(G_OBJECT(entry), "focus-out-event",
+                     G_CALLBACK(options_entry_cb), "base_url");
 
 	///EXTRAS SECTION
 	tab = gtk_vbox_new(FALSE, 5);
@@ -5586,6 +5644,7 @@ static void init_plugin(PurplePlugin *plugin)
 	purple_prefs_add_bool("/plugins/webpidgin/show_smileys", 1);
 	purple_prefs_add_bool("/plugins/webpidgin/use_sounds", 1);
 	purple_prefs_add_bool("/plugins/webpidgin/use_custom_css", 0);
+    purple_prefs_add_string("/plugins/webpidgin/base_url", "");
 }
 
 PURPLE_INIT_PLUGIN(WebPidgin, init_plugin, info)
