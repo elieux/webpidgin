@@ -1,7 +1,7 @@
 body {
-	font-family: monospace;	
-	background: #000;
-	color: #aaa;
+	font-family: sans-serif;	
+	background: #eee;
+	color: #f79700;
 }
 
 #active_chats span {
@@ -14,10 +14,10 @@ body {
 
 #active_chats div{
 	display: inline-table;
-	border: 1px solid #444;
+	border: 1px solid #e1e1e1;
 	padding: 3px;
 	margin: 3px;	
-	background-color: #222;		
+	background-color: #bababa;		
 }
 
 #active_chats .aClose{
@@ -42,31 +42,72 @@ a {color:#01E}
 	padding:5px;
 	margin:5px 0px; 
 	border:1px solid #ddd;
-	background-color:#202020;
+	background-color:#bdbdbd;
+	border-top-left-radius: 8px;
+        -moz-border-radius-toptleft: 8px;
+        -khtml-border-radius-topleft: 8px;
+        -webkit-border-top-left-radius: 8px;
+        border-bottom-left-radius: 8px;
+        -moz-border-radius-bottomleft: 8px;
+        -khtml-border-radius-bottomleft: 8px;
+        -webkit-border-bottom-right-radius: 8px;
 }
 
-.divmsgme{background-color:#234;
-	color: ff0;	
+.divmsgme{background-color:#5881ab;
+	color: #fff;
+	font-size:115%;
 }
 
 .divmsgother {
-	background-color:#322;
-	color: f90;
+	background-color:#916161;
+	color: #fff;
+	font-size:115%;
 }
 
 .divmsgsystem{background-color:#333} 
 
-.divmsgg{-moz-border-radius:10px; padding:5px; margin:2px 3px 10px 3px;}
+.divmsgg{padding:5px;
+	margin:2px 3px 10px 3px;
+	border-top-left-radius: 8px;
+        -moz-border-radius-toptleft: 8px;
+        -khtml-border-radius-topleft: 8px;
+        -webkit-border-top-left-radius: 8px;
+        border-bottom-left-radius: 8px;
+        -moz-border-radius-bottomleft: 8px;
+        -khtml-border-radius-bottomleft: 8px;
+        -webkit-border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 8px;
+        -moz-border-radius-bottomright: 8px;
+        -khtml-border-radius-bottomright: 8px;
+        -webkit-border-bottom-right-radius: 8px;
+        border-top-right-radius: 8px;
+        -moz-border-radius-topright: 8px;
+        -khtml-border-radius-topright: 8px;
+        -webkit-border-top-right-radius: 8px;
+
+
+}
 
 .msggroup{
-	background-color:#333;
+	padding:2px;
+	margin:20px 5px 20px 5px;
+	background-color:#eee;
+        border-bottom-left-radius: 8px;
+        -moz-border-radius-bottomleft: 8px;
+        -khtml-border-radius-bottomleft: 8px;
+        -webkit-border-bottom-left-radius: 8px;
+        border-top-right-radius: 8px;
+        -moz-border-radius-topright: 8px;
+        -khtml-border-radius-topright: 8px;
+        -webkit-border-top-right-radius: 8px;
+	font-size:115%;
 }
 
 hr{
 	border-style:dashed;
 }
 .taimsg{
-	background-color:#333;
-	color: #eee;
+	background-color:#eee;
+	color: #000;
 }
 
