@@ -672,17 +672,18 @@ static PurpleConversation * find_conversation(const char *name)
 {
     PurpleConversation *conv = NULL;
     //uint64_t id;
-	long long unsigned int id=0;	
+	PurpleConversation *id=0;	
 
 	if (! name)
 		return NULL;
 
-    if (sscanf(name,"id=%llx&",&id) == 1) {
+    if (sscanf(name,"id=%p&", &id) == 1) {
         GList *cnv;
         for (cnv = purple_get_conversations(); cnv != NULL; cnv = cnv->next) {
             conv = (PurpleConversation *)cnv->data;
             //purple_debug_info("WebPidgin 2.x","check [%p = %llx]\n",conv,id);
-            if ((long long unsigned int) conv==id) 
+            //printf("XXX %p %p %d\n", conv, id, (conv==id)); fflush(stdout);
+            if (conv==id) 
             {
                 return conv;
             }
