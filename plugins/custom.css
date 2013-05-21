@@ -51,6 +51,14 @@ div.buddy_not_avail {
     margin-bottom: 0.6ex;
 }
 
+div.buddy_avail {
+    margin-bottom: 0.6ex;
+}
+
+div.buddy_chat {
+    margin-bottom: 0.6ex;
+}
+
 a.buddy_not_avail {
     padding-left: 0.1ex;
     padding-right: 0.1ex;
@@ -63,20 +71,28 @@ a.buddy_not_avail:hover {
 	border: 1px solid #800000;
 }
 
-div.buddy_avail {
-    margin-bottom: 0.6ex;
-}
-
 a.buddy_avail {
     padding-left: 0.1ex;
     padding-right: 0.1ex;
-	border: 1px solid #dddddd;
+    border: 1px solid #dddddd;
     border-color: #dddddd #dddddd #080 #dddddd;
-	color: #080;
+    color: #080;
 }
 
 a.buddy_avail:hover {
-	border: 1px solid #080;
+    border: 1px solid #080;
+}
+
+a.buddy_chat {
+    padding-left: 0.1ex;
+    padding-right: 0.1ex;
+    border: 1px solid #dddddd;
+    border-color: #dddddd #dddddd #306 #dddddd;
+    color: #306;
+}
+
+a.buddy_chat:hover {
+    border: 1px solid #306;
 }
 
 #conversation {

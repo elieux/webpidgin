@@ -1506,10 +1506,13 @@ static void webpidgin_buddy_list_walk( webpidgin_client_t * httpd,const char * e
                 PurpleChat * chat = (PurpleChat*)node;
                 const char * name = purple_chat_get_name(chat);
                 char *p_url = NULL;
-                //g_snprintf(buffer,sizeof(buffer),"&nbsp;&nbsp; <A HREF=conversation?%s%s %s>%s</A><BR>",time_stamp(),name,extra_html,name);
-                client_write_vargs(httpd, "&nbsp;&nbsp; <A HREF=\"%s?%s%s\" %s>%s</A><BR>",
+                //g_snprintf(buffer,sizeof(buffer),"&nbsp;&nbsp; <A HREF=conversation?%s%s
+                //%s>%s</A><BR>",time_stamp(),name,extra_html,name);
+                client_write(httpd, " <div class='buddy_chat'> ");
+                client_write_vargs(httpd, "&nbsp;&nbsp; <A class='buddy_chat' HREF=\"%s?%s%s\" %s>%s</A>",
                                    p_url = mk_url("/conversation"),
                                    time_stamp(), name, extra_html, name);
+                client_write(httpd, " </div>\n");
                 free(p_url);
             }break;
 
