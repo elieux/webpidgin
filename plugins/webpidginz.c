@@ -48,12 +48,12 @@ static char  *license = "\
  *
  *		WebPidgin-Z v. 2.0.Z-8
  *
- *		- Several html elements replaced with CSS  
+ *		- Several html elements replaced with CSS
  *		- Several bugfixes
  *		- Fixed some issues with opera and konqueror
  *		- Added sound support with SWFSound and SWFObject
- *		- Added suport for custom CSS. 
- *				You must place a custom.css file in the user's .purple directory ,e.g., '/home/user/.purple' or '%APPDATA%\.purple'. 
+ *		- Added suport for custom CSS.
+ *				You must place a custom.css file in the user's .purple directory ,e.g., '/home/user/.purple' or '%APPDATA%\.purple'.
  *				Sample custom.css included with dark theme
  *
  *
@@ -69,7 +69,7 @@ static char  *license = "\
  *		- Improved chats when grouping messages
  *		- Fixed a bug in ajax, the timeout variable didn't get back to its default value after an error/timeout within the ajax call
  *		- Added client_write_vargs function to support variable arguments like printf (with g_strdup_vprintf). Code should be rewrite to take advantage of this
- *		- Several bugfixes 
+ *		- Several bugfixes
  *
  *
  *		WebPidgin-Z v. 2.0.Z-6
@@ -156,7 +156,7 @@ static char  *license = "\
  * POR HACER:
  *		- Mostrar el numero de correos en las cuentas
  *		- Identificar de que cuenta es cada contacto
- *		- Configurar colores		
+ *		- Configurar colores
  *
  *
  ******************************************* ORIGINAL WEBPIDGIN ***********************************************
@@ -376,7 +376,7 @@ typedef struct{
     int iListenWatcher;
     int fdServerSocket;
     unsigned usListenPort;
-    char * auth;        
+    char * auth;
 }webpidgin_data_t;
 
 typedef struct{
@@ -540,17 +540,17 @@ static GtkIMHtmlSmiley * find_smiley(const char * protocol_id, const char* gesto
 {
 	GSList * smileylist= pidgin_themes_get_proto_smileys(protocol_id);
 	GtkIMHtmlSmiley *gtksmiley=NULL;
-			
+
 	while (smileylist)
-	{				
+	{
 		gtksmiley= smileylist->data;
-		 
+
 		if (purple_strequal( gtksmiley->smile, gesto))
-			return gtksmiley;		
-			
+			return gtksmiley;
+
 		smileylist=smileylist->next;
 	}
-	
+
 	return NULL;
 }
 
@@ -562,17 +562,17 @@ static PurpleBuddy * find_buddy( const char *name )
 {
 	PurpleBuddy *buddydisconnected=NULL;
     PurpleBlistNode *gnode, *cnode, *bnode;
-    long long unsigned int bid=0;    
-    gboolean isbuddyid = FALSE;    
+    long long unsigned int bid=0;
+    gboolean isbuddyid = FALSE;
     char *name_noslash = NULL;
-    
+
     char *punt= g_strrstr(name, "/");
-    if (punt)			
-		name_noslash= g_strndup (name, strlen(name)-strlen(punt));	
-		
+    if (punt)
+		name_noslash= g_strndup (name, strlen(name)-strlen(punt));
+
 	//purple_debug_info("WebPidgin 2/DFG","%s \n",name_noslash);
 
-	if (sscanf(name,"bd=%llx&",&bid) == 1) 
+	if (sscanf(name,"bd=%llx&",&bid) == 1)
 	{
         isbuddyid = TRUE;
     }
@@ -593,15 +593,15 @@ static PurpleBuddy * find_buddy( const char *name )
 
 
 				if (isbuddyid)
-				{					
+				{
 					//purple_debug_info("WebPidgin 2/DFG","%p %p %llx\n",buddy, (void *)bid, bid);
 					if (buddy == (void *)bid)
-						return buddy;            
+						return buddy;
 				}
 				else
-				{									
+				{
 					if( strcmp(buddy->account->username,name)== 0)
-						continue;											
+						continue;
 
 					//purple_debug_info("WebPidgin 2/DFG","%s %s %s %s\n",buddy->name, name, buddy->account->username, name_noslash);
 
@@ -611,14 +611,14 @@ static PurpleBuddy * find_buddy( const char *name )
 						{
 							buddydisconnected = (PurpleBuddy *)bnode;
 							continue;
-						}						
+						}
 						else
 							return buddy;
 					}
 					else if(name_noslash && strcmp(buddy->name,name_noslash)== 0 )
-					{							
+					{
 						return buddy;
-					}									
+					}
 				}
             }
         }
@@ -635,7 +635,7 @@ static PurpleConversation * find_conversation(const char *name)
 {
     PurpleConversation *conv = NULL;
     //uint64_t id;
-	long long unsigned int id=0;	
+	long long unsigned int id=0;
 
 	if (! name)
 		return NULL;
@@ -645,42 +645,42 @@ static PurpleConversation * find_conversation(const char *name)
         for (cnv = purple_get_conversations(); cnv != NULL; cnv = cnv->next) {
             conv = (PurpleConversation *)cnv->data;
             //purple_debug_info("WebPidgin 2.x","check [%p = %llx]\n",conv,id);
-            if ((long long unsigned int) conv==id) 
+            if ((long long unsigned int) conv==id)
             {
                 return conv;
             }
         }
     } else {
-    	
+
     	PurpleBuddy *b = NULL;
-            
+
 		b=find_buddy(name);
 		if (b)
-		{                
+		{
 			conv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_IM, b->name, b->account);
 			if (conv)
 				return (conv);
 		}
-    	
-    	
+
+
     	///kizas pueda borrar este codigo, ya vere
         /**GList *cnv;
         for (cnv = purple_get_conversations(); cnv != NULL; cnv = cnv->next)
         {
             const char *convName = NULL;
             conv = (PurpleConversation *)cnv->data;
-                        					
+
             convName = purple_conversation_get_name(conv);
             if ( (convName) && (strcmp(convName,name) == 0)) {
                 return conv;
             }
             //purple_debug_info("WebPidgin 2.x/ASD","%s\n",convName);
-            
+
             convName = purple_conversation_get_title(conv);
             if ( (convName) && (strcmp(convName,name) == 0)) {
                 return conv;
             }
-        } **/       
+        } **/
     }
     return NULL;
 }
@@ -876,18 +876,18 @@ static gint chat_invited_cb(PurpleAccount *account, const char *inviter,
 }
 
 static void auto_accept_complete_cb(PurpleXfer *xfer, PurpleXfer *my)
-{		
-	if (xfer) 
+{
+	if (xfer)
 	{
 		purple_xfer_ref(xfer);
-		
+
 		PurpleConversation *conv=purple_find_conversation_with_account(PURPLE_CONV_TYPE_IM, xfer->who, xfer->account);
 		if(conv)
 		{
 			char *message = g_strdup_printf(_("Received file transfer of <a href='getFile?ftid=%p'>%s</a> %d completed."),xfer, xfer->filename, xfer->ref);
 			purple_conversation_write(conv, "WebPidgin-Z", message, PURPLE_MESSAGE_SYSTEM , time(NULL));
 			g_free(message);
-		}		
+		}
 	}
 }
 
@@ -1020,13 +1020,13 @@ static ssize_t client_write_vargs( webpidgin_client_t * httpd, const char* forma
 	va_list list;
 	char *buffer;
 	ssize_t ret;
-	
+
 	va_start( list, format);
-	buffer=g_strdup_vprintf(format, list);	
+	buffer=g_strdup_vprintf(format, list);
 	va_end(list);
-		
+
 	ret=client_write(httpd, buffer);
-	
+
 	g_free(buffer);
 	return ret;
 }
@@ -1072,7 +1072,7 @@ static void client_write_http_header_redirect( webpidgin_client_t * httpd , cons
 	client_write( httpd,"Content-type: text/html;charset=utf-8\n");
     client_write_date(httpd);
     client_write( httpd,"Server: WebPidginZ\n");
-    client_write( httpd,"Connection: close\n");    
+    client_write( httpd,"Connection: close\n");
     client_write( httpd,"\n");
 }
 
@@ -1086,10 +1086,10 @@ static void client_write_cmds( webpidgin_client_t * httpd, const char *update )
     {
         if( ( strcmp(update,"/") == 0 ) || ( strcmp(update,"/ActiveList") == 0 ) )
         {
-            /*if (gOptionFontAdjust >= 0) 
+            /*if (gOptionFontAdjust >= 0)
             {
                 g_snprintf(buffer,sizeof(buffer),"<FONT SIZE=+%d>", gOptionFontAdjust);
-            }else if(gOptionFontAdjust < 0) 
+            }else if(gOptionFontAdjust < 0)
             {
                 g_snprintf(buffer,sizeof(buffer),"<FONT SIZE=%d>", gOptionFontAdjust);
             }
@@ -1099,15 +1099,15 @@ static void client_write_cmds( webpidgin_client_t * httpd, const char *update )
         }
         else
         {
-            /*if (gOptionFontAdjust >= 0) 
+            /*if (gOptionFontAdjust >= 0)
             {
                 g_snprintf(buffer,sizeof(buffer),"<FONT SIZE=+%d>", gOptionFontAdjust);
-            }else if(gOptionFontAdjust < 0) 
+            }else if(gOptionFontAdjust < 0)
             {
                 g_snprintf(buffer,sizeof(buffer),"<FONT SIZE=%d>", gOptionFontAdjust);
             }
             client_write(httpd, buffer);*/
-            
+
             g_snprintf(buffer,sizeof(buffer),"CMD: <A HREF='%s' target=\"conv\">Update</A><HR> \n",update);
         }
     }
@@ -1137,13 +1137,13 @@ static void client_write_header( webpidgin_client_t * httpd, const char *update 
     client_write_http_header( httpd );
     client_write( httpd,"<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">\n");
     client_write( httpd,"<html>\n");
-    client_write( httpd," <head>\n");    
+    client_write( httpd," <head>\n");
     client_write( httpd," <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" />\n");
     client_write( httpd," <meta http-equiv=\"Pragma\" content=\"no-cache\">\n");
     client_write( httpd,"  <link rel=\"shortcut icon\" href=\"favicon.ico\" type=\"image/x-icon\" />\n");
-    
-    client_write( httpd,"  <link rel=\"icon\" href=\"favicon.ico\" type=\"image/x-icon\" />\n");        
-    
+
+    client_write( httpd,"  <link rel=\"icon\" href=\"favicon.ico\" type=\"image/x-icon\" />\n");
+
     client_write( httpd,"<style type='text/css'>");
     client_write( httpd,".logo{margin:5px 10px; float:left; border:1px solid black} #divError{}\n\
 a {color:#01E} .msggroup{color:#fff; padding:2px 5px; -moz-border-radius:7px; } .divmsgme{background-color:#ddf;}\n\
@@ -1151,14 +1151,14 @@ a {color:#01E} .msggroup{color:#fff; padding:2px 5px; -moz-border-radius:7px; } 
 .divmsgsystem{background-color:#dedede} .divmsgg{-moz-border-radius:10px; padding:5px; margin:2px 3px 10px 3px;}\n\
 .buddyin1{color:#66E} .buddyin2{color:#666} .buddycmz{color:#D55; font-weight:bold;} .taimsg{-wap-input-format: *m;}\n\
 .divmsgother{background-color:#fdd} .buddyimg{float:right; border:3px outset #D55; margin:0px 10px; max-width:20%} .aClose{margin-right: 10px} ");
-		
-	client_write_vargs( httpd,"body{overflow:auto; font-size:%d%%}", (100 + gOptionFontAdjust*10));	
-	
+
+	client_write_vargs( httpd,"body{overflow:auto; font-size:%d%%}", (100 + gOptionFontAdjust*10));
+
 	client_write( httpd,"</style>");
-	
+
 	///custom css
 	if (gUseCustomCSS)
-		client_write( httpd,"  <link rel=\"stylesheet\" type=\"text/css\" href=\"custom.css\" />\n");    
+		client_write( httpd,"  <link rel=\"stylesheet\" type=\"text/css\" href=\"custom.css\" />\n");
 
     if ( gOptionMetaRefresh && !gUseJavascript )
     {
@@ -1237,7 +1237,7 @@ static void client_write_tail( webpidgin_client_t * httpd )
 
 static void webpidgin_show_buddy(webpidgin_client_t * httpd,const char * extra_html,PurpleBuddy *buddy )
 {
-    char buffer[4096];    
+    char buffer[4096];
     char * name = g_markup_escape_text (buddy->name, -1);
     const char * alias;
 	PurpleStatus *status;
@@ -1312,7 +1312,7 @@ static void webpidgin_show_buddy(webpidgin_client_t * httpd,const char * extra_h
 
         client_write(httpd,buffer);
     } else if (!purple_presence_is_available(buddy->presence))
-    {		
+    {
 		client_write_vargs(httpd, " (%s)", purple_status_get_name (status));
     }
 
@@ -1355,7 +1355,7 @@ static void webpidgin_buddy_list_walk( webpidgin_client_t * httpd,const char * e
                     /// not sure yet
                     //g_snprintf(buffer,sizeof(buffer),"<B>type=%d ( not sure )</B><BR>\n",node->type);
                     //client_write(httpd,buffer);
-                }
+                //}
                 else
                 {
                     PurpleBuddy *buddy = purple_contact_get_priority_buddy(contact);
@@ -1591,9 +1591,9 @@ static const char* get_active_chats(char * hash)
 
 		g_strlcat(ret, "</span></div>\n", sizeof(ret));
 
-		///AUMENTO El puntero para calcular el hash ignorando los cambios de estado		
-		punt += strlen(punt);			
-		
+		///AUMENTO El puntero para calcular el hash ignorando los cambios de estado
+		punt += strlen(punt);
+
     }
 
     g_strlcat(ret, "<HR>", sizeof(ret));
@@ -1670,7 +1670,7 @@ static int action_active_list( webpidgin_client_t * httpd, const char * notused 
     client_write(httpd,"</div>\n");
 
 	client_write(httpd,"<HR>");
-	
+
 	if (!gOptionWWWFrames)
 		show_last_sessions (httpd, gShowNLastSessions);
 
@@ -1683,7 +1683,7 @@ static int action_active_list( webpidgin_client_t * httpd, const char * notused 
 	    client_write(httpd,"<script type='text/javascript'>");
 
 		client_write(httpd,"window.onload=function(e){\n");
-		
+
 		g_snprintf(buffer,sizeof(buffer), "update(new Array ('active_list', 'active_chats'), \"\");");
 		client_write(httpd, buffer);
 
@@ -1814,10 +1814,10 @@ static int action_options( webpidgin_client_t * httpd, const char * extra )
     ///
     client_write(httpd,"&nbsp;&nbsp;Username: N/A<BR>\n");
     client_write(httpd,"&nbsp;&nbsp;Password: N/A<BR>\n");
-    
-    g_snprintf(buffer,1024,"&nbsp;&nbsp;Only allow access from the next IP/host: ( %s )  N/A<BR>\n", gOptionRestrictAccessByIP ? gAllowedIP : "option disabled");    
+
+    g_snprintf(buffer,1024,"&nbsp;&nbsp;Only allow access from the next IP/host: ( %s )  N/A<BR>\n", gOptionRestrictAccessByIP ? gAllowedIP : "option disabled");
     client_write(httpd, buffer);
-    
+
     client_write(httpd,"<BR>\n");
 
     g_snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=use_digest_auth %s>Use digest authentication instead of basic authentication<BR>\n",gOptionUseDigestAuth ? "checked" : "");
@@ -1843,10 +1843,10 @@ static int action_options( webpidgin_client_t * httpd, const char * extra )
 
     g_snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=use_status_messages %s>Buddy Status Messages<BR>\n",gOptionStatusMessages ? "checked" : "" );
     client_write(httpd,buffer);
-    
+
     g_snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=show_buddy_icon %s>Show buddy icon<BR>\n",gOptionShowBuddyIcon ? "checked" : "" );
     client_write(httpd,buffer);
-    
+
     g_snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=show_smileys %s>Show smileys<BR>\n",gOptionShowSmileys ? "checked" : "" );
     client_write(httpd,buffer);
 
@@ -1871,10 +1871,10 @@ static int action_options( webpidgin_client_t * httpd, const char * extra )
     client_write(httpd,buffer);
 
 	client_write(httpd, "<div style='padding-left:20px'>");
-	
+
     g_snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=show_no_auth_sessions %s>Show non-authenticated sessions<BR>\n",gShowNoAuthSessions ? "checked" : "");
     client_write(httpd,buffer);
-    
+
     client_write(httpd, "</div>");
 
     g_snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=use_jscript %s>Use Javascript(Ajax) in conversations (increases the ammount of data to transfer)<BR>\n",gUseJavascript ? "checked" : "");
@@ -1882,7 +1882,7 @@ static int action_options( webpidgin_client_t * httpd, const char * extra )
 
 	client_write(httpd, "<div style='padding-left:20px'>");
     g_snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=use_jscript_only_refresh %s>Don't use Ajax when sending messages (solves some issues with slow connections and mobile browsers)<BR>\n",gUseJSOnlyRef? "checked" : "");
-    client_write(httpd,buffer);    
+    client_write(httpd,buffer);
     client_write_vargs(httpd, "&nbsp;&nbsp;<input type=checkbox name=use_sounds %s>Enable sounds (requires Flash 8.0 or later)<BR>\n",gUseSounds? "checked" : "");
     client_write(httpd, "</div>");
 
@@ -1891,7 +1891,7 @@ static int action_options( webpidgin_client_t * httpd, const char * extra )
 
     g_snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=group_messages %s>Group messages in conversations<BR>\n", gGroupMessages ? "checked" : "");
     client_write(httpd,buffer);
-    
+
     g_snprintf(buffer,1024,"&nbsp;&nbsp;<input type=checkbox name=use_custom_css %s>Use custom.css file<BR>\n",gUseCustomCSS ? "checked" : "");
     client_write(httpd,buffer);
 
@@ -1909,7 +1909,7 @@ static int action_options( webpidgin_client_t * httpd, const char * extra )
 static int action_accounts( webpidgin_client_t * httpd, const char * notused )
 {
     int accountCount = 0;
-    char buffer[4096]; 
+    char buffer[4096];
     GList *account_iter = NULL;
     client_write_header( httpd,"/Accounts" );
     client_write(httpd,"Accounts:<BR>\n");
@@ -1975,7 +1975,7 @@ static int action_root( webpidgin_client_t * httpd, const char * notused )
         client_write( httpd,"<html>\n");
         client_write( httpd," <head>\n");
         client_write( httpd,"  <title>WebPidginZ</title>\n");
-        client_write( httpd,"  <link rel=\"shortcut icon\" href=\"/favicon.ico\" type=\"image/x-icon\" />\n");    
+        client_write( httpd,"  <link rel=\"shortcut icon\" href=\"/favicon.ico\" type=\"image/x-icon\" />\n");
         client_write( httpd,"  <noframes><body>Your browser can not handle frames.<BR>\n");
         client_write( httpd,"  Please <A HREF=/Options>click here</A> and uncheck Enable Frames</body></noframes>\n");
         client_write( httpd,"   <FRAMESET COLS=\"20%, *\" BORDER=1 ID=fs1>");
@@ -2068,7 +2068,7 @@ static int action_logout( webpidgin_client_t * httpd, const char * extra )
         purple_account_disconnect( account );
         purple_account_set_enabled(account, PIDGIN_UI, FALSE);
     }
-    
+
     //return action_root(httpd,NULL); // return to root page
     client_write_http_header_redirect(httpd, "/");
 	return 1;
@@ -2092,26 +2092,26 @@ static void show_conversation ( webpidgin_client_t * httpd, PurpleConversation *
     {
         PurpleConvChat *chat;
         const char* topic;
-        
+
         chat = PURPLE_CONV_CHAT(conv);
         topic=purple_conv_chat_get_topic(chat);
 
 		//purple_debug_info("WebPidgin 2-TOPIXXX","(%s)\n",purple_conv_chat_get_topic(chat));
-		
+
 
 		if (topic && strlen(topic)>0)
-		{        
+		{
 			g_snprintf(buffer,1024,"<B>Topic:</B>&nbsp;%s<BR>", topic);
 			client_write(httpd, buffer);
 		}
-        
+
         client_write(httpd, "<B>Members:</B>");
 
         for (iter=purple_conv_chat_get_users(chat);iter!=NULL;iter=iter->next)
         {
             PurpleConvChatBuddy *buddy;
             buddy = (PurpleConvChatBuddy *) iter->data;
-            
+
             g_snprintf(buffer,1024,"&nbsp;%s%s", (buddy->alias)?(buddy->alias):(buddy->name), (iter->next)?", ":"");
             client_write(httpd, buffer);
         }
@@ -2141,46 +2141,46 @@ static void show_conversation ( webpidgin_client_t * httpd, PurpleConversation *
         char stylenick[150] = "";
         char stylemsg[150] = "";
         char nick [256]= "";
-        char date [256]= "";        
+        char date [256]= "";
 
 
         purple_debug_info("WebPidgin 2","who=%s self=%s\n", msg->who, self);
         if (gOptionUseColor)
-        {           	         					
+        {
 			///I EXPECT THIS WILL WORK FINE
 			if (purple_conversation_message_get_flags(msg) & PURPLE_MESSAGE_SEND)
 			{
                 g_snprintf(stylenick,sizeof(stylenick),"color:%s", array_colors[1]);
                 g_snprintf(stylemsg,sizeof(stylemsg),"divmsgme");
-            } 
+            }
             else if (purple_conversation_message_get_flags(msg) & PURPLE_MESSAGE_RECV)
-            {            								
+            {
 				int nbuddy=2;
-				
+
 				///COLORIZAR LOS CHATS
 				if (purple_conversation_get_type(conv) == PURPLE_CONV_TYPE_CHAT)
 				{
 					GList *itertmp;
-										
+
 					for (itertmp=purple_conv_chat_get_users(PURPLE_CONV_CHAT(conv));itertmp!=NULL;itertmp=itertmp->next)
 					{
 						PurpleConvChatBuddy *buddy;
 						buddy = (PurpleConvChatBuddy *) itertmp->data;
-						
+
 						//purple_debug_info("WebPidgin 2-COLORIZE","buddy->name=%s msg->who=%s nbuddy=%d\n", buddy->name, msg->who, nbuddy);
-						
+
 						if(purple_strequal(msg->who, buddy->name))
 							break;
 						else if(purple_strequal(buddy->name, self))
 							continue;
-						
-						nbuddy++;					
-					}					
+
+						nbuddy++;
+					}
 					//purple_debug_info("WebPidgin 2-COLORIZE2","msg->who=%s nbuddy=%d\n", msg->who, nbuddy);
 					if (nbuddy >= NUM_COLORS)
 						nbuddy = (nbuddy%NUM_COLORS)+2;
-				}						
-				
+				}
+
 				g_snprintf(stylenick,sizeof(stylenick),"color:%s", array_colors[nbuddy]);
 				g_snprintf(stylemsg,sizeof(stylemsg),"divmsgother");
             }
@@ -2213,27 +2213,27 @@ static void show_conversation ( webpidgin_client_t * httpd, PurpleConversation *
 			g_snprintf(nick,sizeof(nick), "%s", msg->alias);
 		else
 			g_snprintf(nick,sizeof(nick), "%s", msg->who);
-		
+
 
 		///muestro la fecha y el nick
 		if (!gGroupMessages || g_ascii_strcasecmp (lastDate, date) || g_ascii_strcasecmp (nick, lastNick) || g_ascii_strcasecmp (stylenick, lastStyleNick))
 	    {
 	    	if (msgCount>0)
-				client_write(httpd,"\n</div>\n");									
-	    	
+				client_write(httpd,"\n</div>\n");
+
 	       	g_snprintf(lastDate,sizeof(lastDate), "%s", date);
 	       	g_snprintf(lastNick,sizeof(lastNick), "%s", nick);
 	       	g_snprintf(lastStyleNick,sizeof(lastStyleNick), "%s", stylenick);
-			
+
 	       	if (!gGroupMessages)
 	       	{
 	       		client_write(httpd,"\n<div>\n");
-	    		client_write(httpd,date);			
+	    		client_write(httpd,date);
 	       	}
 
 	       	if( gOptionBoldNames )
             	client_write(httpd,"<B>");
-			
+
         	if (!gGroupMessages || !gOptionUseColor)
 				g_snprintf(buffer,sizeof(buffer),"<span style='%s'>%s</span>", stylenick, nick);
 			else
@@ -2249,12 +2249,12 @@ static void show_conversation ( webpidgin_client_t * httpd, PurpleConversation *
             	client_write(httpd, "&nbsp;");
 				client_write(httpd, date);
 				client_write(httpd, "<BR />\n");
-				
+
 				g_snprintf(buffer,sizeof(buffer),"\n<div class='%s divmsgg'>\n", stylemsg);
 				client_write(httpd,buffer);
 			}
 	    	else
-            	client_write(httpd, ":&nbsp;"); /// Add a space, otherwise things blend in to much            				
+            	client_write(httpd, ":&nbsp;"); /// Add a space, otherwise things blend in to much
 	    }
 
 
@@ -2262,123 +2262,123 @@ static void show_conversation ( webpidgin_client_t * httpd, PurpleConversation *
         {
 
             char * tmpstr2=NULL;
-			char * tmpstr=NULL; 
-					
-						
+			char * tmpstr=NULL;
+
+
 			///chapu
-			tmpstr2 = purple_strreplace (msg->what, "\n", "{{{:::BR:::}}}");											
+			tmpstr2 = purple_strreplace (msg->what, "\n", "{{{:::BR:::}}}");
 			//tmpstr2 = purple_strreplace (msg->what, "\n", "&nbsp;\n&nbsp;");
-						
+
 			if (purple_strequal (stylemsg,"divmsgsystem"))
 			{
-				
+
 				GData *attributes;
 				char *start;
 				char *end;
 				if (purple_markup_find_tag("a", tmpstr2, &start, &end, &attributes))
 				{
 					const char *tmp = g_datalist_get_data(&attributes, "href");
-					
-					
+
+
 					purple_debug_info("WebPidgin 2/MSGSYSTEM","aki2 %s %s\n", start, tmp);
 					///FOUND!
 					//if (tmp && !g_ascii_strncasecmp(tmp, "file://", strlen ("file://")))
 					if (tmp)
-					{												
+					{
 						//*end='\0';
 
-						//tmpstr=g_strconcat(tmpstr2, 
-						
+						//tmpstr=g_strconcat(tmpstr2,
+
 						//tmpstr=g_strconcat(start, NULL);
 						tmpstr=g_strconcat(tmpstr2, NULL);
 					}
-					
+
 					g_datalist_clear(&attributes);
 				}
 			}
-			
+
 			if (!tmpstr)
 			{
-				tmpstr = purple_markup_strip_html (tmpstr2);				
-				g_free(tmpstr2);					
-													
-						
+				tmpstr = purple_markup_strip_html (tmpstr2);
+				g_free(tmpstr2);
+
+
 				tmpstr2 = g_markup_escape_text (tmpstr, -1);
 				g_free(tmpstr);
-							
+
 				tmpstr = purple_strreplace (tmpstr2, "\n", "<BR />\n");
 				g_free(tmpstr2);
 			}
-			
-			tmpstr2 = purple_strreplace (tmpstr, "{{{:::BR:::}}}", "<BR />\n");			
-			g_free(tmpstr);			
-			
+
+			tmpstr2 = purple_strreplace (tmpstr, "{{{:::BR:::}}}", "<BR />\n");
+			g_free(tmpstr);
+
 				///SMILEYS BETA SUPER CHAPU
 				//tmpstr2 = tmpstr;
 				if (gOptionShowSmileys)
-				{								
+				{
 					char * ctemp;
-					
+
 					purple_debug_info("WebPidgin 2/MASDD","BETA\n");
 					///CUSTOM SMILEYS PROPIOS
 					if (purple_conversation_message_get_flags(msg) == PURPLE_MESSAGE_SEND)
 					{
 						GList * customsmileys= purple_smileys_get_all ();
-						
+
 						while (customsmileys)
-						{					
+						{
 							const char * sc= purple_smiley_get_shortcut((PurpleSmiley*)customsmileys->data);
 							char imgsmiley[1024];
 							char *enc64= purple_base16_encode (sc, strlen(sc));
 							g_snprintf(imgsmiley, sizeof(imgsmiley), "<img src='image?smiley=%s' />", enc64);
 							g_free (enc64);
-							
-							ctemp = tmpstr2;	
+
+							ctemp = tmpstr2;
 							tmpstr2 = purple_strreplace (ctemp, sc, imgsmiley);
 							g_free(ctemp);
-					
-							customsmileys=g_list_delete_link(customsmileys, customsmileys); 
+
+							customsmileys=g_list_delete_link(customsmileys, customsmileys);
 						}
 					}else
-					{					
+					{
 						///CUSTOM SMILEYS RECIBIDOS
-						GHashTable *csmileysr;								
+						GHashTable *csmileysr;
 						csmileysr= purple_conversation_get_data(conv, "webpidgin_custom_smileys_received");
-						
-						
+
+
 						if (csmileysr)
-						{						
-							
-							GList* gl = NULL;	
+						{
+
+							GList* gl = NULL;
 							/// DEBO HACER ESTO POR CULPA DE WIN32 Y SUS ANTICUADAS LIBRERIAS
 							//gl = g_hash_table_get_keys(active_httpds);
 							g_hash_table_foreach(csmileysr, get_keys, &gl);
-											
+
 							while (gl)
-							{							
+							{
 								char *smtmp = gl->data;
 								char imgsmiley[1024];
-								ctemp = tmpstr2;	
+								ctemp = tmpstr2;
 								char *enc64= purple_base16_encode (smtmp, strlen(smtmp));
-								g_snprintf(imgsmiley, sizeof(imgsmiley), "<img src='image?cid=id=%p&smiley=%s' />", conv, enc64);	
-								g_free (enc64);				
+								g_snprintf(imgsmiley, sizeof(imgsmiley), "<img src='image?cid=id=%p&smiley=%s' />", conv, enc64);
+								g_free (enc64);
 								tmpstr2 = purple_strreplace (ctemp, smtmp , imgsmiley);
 								g_free(ctemp);
 								gl=gl->next;
 							}
 						}
-							
-						
+
+
 						purple_debug_info("WebPidgin 2/MASDD","BETA2\n");
 						PidginConversation * pconv =PIDGIN_CONVERSATION(conv);
 						GtkIMHtml* imhtml = GTK_IMHTML(pconv->imhtml);
-						//GtkIMHtml* imhtml = GTK_IMHTML(pconv->entry);					
-						
-						GtkSmileyTree *t1;					
-											
+						//GtkIMHtml* imhtml = GTK_IMHTML(pconv->entry);
+
+						GtkSmileyTree *t1;
+
 						t1 = g_hash_table_lookup(imhtml->smiley_data, purple_account_get_protocol_name(conv->account));
 						purple_debug_info("WebPidgin 2/MASDD","imhtml %p datasmil %p tree %p\n", imhtml, imhtml->smiley_data, t1);
-						
+
 						if (t1)
 						{
 							GSList *list = g_slist_prepend (NULL, t1);
@@ -2389,59 +2389,59 @@ static void show_conversation ( webpidgin_client_t * httpd, PurpleConversation *
 								gsize i;
 								list = g_slist_remove(list, t);
 								GtkIMHtmlSmiley *gtksmil=t->image;
-								
+
 								purple_debug_info("WebPidgin 2/MASDD","BETA3 [%p]\n", gtksmil);
 								//purple_debug_info("WebPidgin 2/MASDD","%s %s\n", dsad->smile, msg->alias);
 								if (gtksmil)
-								{														
+								{
 									purple_debug_info("WebPidgin 2-MASDD2","[%d] %p smiley[%s][%p][%s][%u]\n",++cint,  gtksmil, gtksmil->file, gtksmil->data, gtksmil->smile, gtksmil->datasize);
-									
+
 									char imgsmiley[1024];
-									ctemp = tmpstr2;	
+									ctemp = tmpstr2;
 									char *enc64= purple_base16_encode (gtksmil->smile, strlen(gtksmil->smile));
-									g_snprintf(imgsmiley, sizeof(imgsmiley), "<img src='image?cid=id=%p&smiley=%s' />", conv, enc64);					
+									g_snprintf(imgsmiley, sizeof(imgsmiley), "<img src='image?cid=id=%p&smiley=%s' />", conv, enc64);
 									g_free(enc64);
 									tmpstr2 = purple_strreplace (ctemp, gtksmil->smile, imgsmiley);
 									g_free(ctemp);
 								}
-								
-								if (t && t->values) 
+
+								if (t && t->values)
 								{
 									for (i = 0; i < t->values->len; i++)
-										list = g_slist_prepend (list, t->children [i]);								
-								}						
-							}	
+										list = g_slist_prepend (list, t->children [i]);
+								}
+							}
 						}
 					}
-					
+
 					PurpleAccount *account =conv->account;
 					GSList * smileylist= pidgin_themes_get_proto_smileys(account->protocol_id);
 					GtkIMHtmlSmiley *gtksmiley=NULL;
-					
-					
+
+
 					while (smileylist)
-					{	
-						ctemp = tmpstr2;	
+					{
+						ctemp = tmpstr2;
 						gtksmiley= smileylist->data;
-						
+
 						//purple_debug_info("WebPidgin 2/MASDD4","%s [%s]\n", gtksmiley->smile, ctemp);
-						
+
 						char imgsmiley[1024];
 						char *enc64= purple_base16_encode (gtksmiley->smile, strlen(gtksmiley->smile));
 						g_snprintf(imgsmiley, sizeof(imgsmiley), "<img src='image?protoid=%s&smiley=%s' />", account->protocol_id, enc64);
 						g_free(enc64);
-						
+
 						tmpstr2 = purple_strreplace (ctemp, gtksmiley->smile, imgsmiley);
-						 
+
 						g_free(ctemp);
 						smileylist=smileylist->next;
 					}
 				}
 				//tmpstr = tmpstr2;
-				///BETA SUPER CHAPU			
-			
-			
-			
+				///BETA SUPER CHAPU
+
+
+
 			if (purple_conversation_message_get_flags(msg) & PURPLE_MESSAGE_NO_LINKIFY)
 				tmpstr = g_strdup(tmpstr2);
 			else
@@ -2452,15 +2452,15 @@ static void show_conversation ( webpidgin_client_t * httpd, PurpleConversation *
 
             client_write(httpd,tmpstr);
             //client_write(httpd,msg->what);
-            
+
 
             g_free(tmpstr);
             g_free(tmpstr2);
         }
-			
+
 		client_write(httpd,"<BR />\n");
 		//client_write(httpd,"\n</div>\n");
-			
+
         msgCount++;
 
         if (gGroupMessages)
@@ -2468,34 +2468,34 @@ static void show_conversation ( webpidgin_client_t * httpd, PurpleConversation *
         else
         	iter=iter->next;
     }
-        
+
 	//if (gGroupMessages)
 		client_write(httpd,"\n</div>\n");
 
-    //client_write(httpd,"<HR id=\"isend\" />\n");    
-    client_write(httpd,"<span id=\"isend\" />\n");    
+    //client_write(httpd,"<HR id=\"isend\" />\n");
+    client_write(httpd,"<span id=\"isend\" />\n");
 }
 
 
 static void show_ajax_engine ( webpidgin_client_t * httpd )
-{		
+{
 	///SOUND
-	//gUseSounds=0;	
+	//gUseSounds=0;
 	if (gUseSounds)
 	{
-		client_write(httpd,"\n<script type=\"text/javascript\" src=\"swf.js\"></script>\n");		
+		client_write(httpd,"\n<script type=\"text/javascript\" src=\"swf.js\"></script>\n");
 	}
 
 	client_write(httpd,"<script type=\"text/javascript\">var reqU = newxmlhttpreq(); var reqU2 =newxmlhttpreq(); \
 		var title1=document.title; var timeout=100; var urlbase= location.protocol + '//' + location.host + '/';");
-	
+
 	client_write_vargs(httpd, "\nfunction get(req, page, fready){ try { \
 			req.open('GET', page, true); req.onreadystatechange=function(){if (checkstatus(req)) eval (fready)}; \
 			req.setRequestHeader( 'If-Modified-Since', 'Sat, 1 Jan 2000 00:00:00 GMT' ); \
-			req.send(null);} catch (err) { %s req.abort(); } return false; }\n", purple_debug_is_enabled ()?"alert ('URL: [ ' + page + ' ], { ' + err+' }');":"");	
+			req.send(null);} catch (err) { %s req.abort(); } return false; }\n", purple_debug_is_enabled ()?"alert ('URL: [ ' + page + ' ], { ' + err+' }');":"");
 
 	client_write(httpd,"\nfunction checkstatus(req){if(req.readyState==4)return true; else return false; }\n");
-	
+
 	client_write(httpd,"\nfunction newxmlhttpreq(){ var ret= null; \
 		if(window.XMLHttpRequest) {try {ret=new XMLHttpRequest();} catch(err1) { ret=null; }}\
 		else if (window.ActiveXObject){try {ret=new ActiveXObject(\"Msxml2.XMLHTTP\");} catch(err2){ret=null;} } return ret; }\n");
@@ -2504,29 +2504,29 @@ static void show_ajax_engine ( webpidgin_client_t * httpd )
 		var urivars='&'; if(div.length == div.toString().length) div=div.split(',') ;\
 		if (reqU.readyState>0 && reqU.readyState<4) return; for (var i=0; i < div.length; i++){\
 		var divc=document.getElementById(div[i]); urivars = urivars + div[i] + '=' + encodeURIComponent(divc.wpuc)+ '&';} \
-		get(reqU, urlbase+ 'ajax?action=count' + urivars + extra, 'update1(\"'+ div +'\", \"'+ extra +'\");')}\n");	
+		get(reqU, urlbase+ 'ajax?action=count' + urivars + extra, 'update1(\"'+ div +'\", \"'+ extra +'\");')}\n");
 
 	client_write(httpd, "\nfunction update1(div, extra) {\
 		var divc = null; if(reqU.status == 200){ \
 		var tmp = reqU.responseText.split(':::', 3); divc=document.getElementById(tmp[0]); var alertar=false; }else if (timeout<15000) timeout+=timeout;\
 		if (divc && tmp.length == 3 && tmp[2] != divc.wpucSA) { if (typeof(divc.wpucSA) != 'undefined'){ alertar=true;} divc.wpucSA = tmp[2];}\
 		if (divc && tmp[1] != divc.wpuc) { divc.wpuc=tmp[1]; get(reqU2, urlbase+ 'ajax?action='+ tmp[0] +'&'+ extra , 'update2(\"'+ tmp[0] +'\", '+ alertar +', \"'+ div +'\", \"'+ extra +'\");'); }\
-		else {update_again(div,extra);} }\n");	
+		else {update_again(div,extra);} }\n");
 
 	client_write(httpd,"function update2(divU, alertar, div, extra) { \
 		var divC=document.getElementById(divU); if(reqU2.status==200) { ");
-		
-	client_write(httpd,"var divconv=document.getElementById('conversation'); \n");	
-	
+
+	client_write(httpd,"var divconv=document.getElementById('conversation'); \n");
+
 	if (gGroupMessages && gGroupMessagesAutoH)
 		client_write(httpd,"if (divconv) comp_scroll_conversation();\n");
-	
-	client_write(httpd,"divC.innerHTML=reqU2.responseText; timeout=100;\n");	
-	
+
+	client_write(httpd,"divC.innerHTML=reqU2.responseText; timeout=100;\n");
+
 	if (gGroupMessages && gGroupMessagesAutoH)
 		client_write(httpd,"if (document.body.clientHeight>440 && screen.height>500 && divconv) reajust_conversation(); else \n");
 	client_write(httpd,"if (divconv) reajust_conversation(true);\n");
-	
+
 	client_write(httpd,"if(alertar) showalert('*** '+title1+' ***');} {update_again(div,extra);} ;}\n");
 
 	client_write_vargs(httpd,"\nfunction update_again(div, extra){ try {setTimeout ('update(\"'+ div +'\", \"'+ extra +'\")', timeout);} \
@@ -2535,13 +2535,13 @@ static void show_ajax_engine ( webpidgin_client_t * httpd )
 	client_write(httpd,"\nvar showinterval=null; var blurred=false; \n ");
 	client_write_vargs(httpd,"\nfunction showalert(text){ \n %s \n if(!blurred || showinterval) return; showinterval = setInterval('alertar(\"'+text+'\")', 600); }\n",  (gUseSounds)?"if(blurred){play_click()}":"");
 	client_write(httpd,"\nfunction stopalert(){if (showinterval) clearInterval (showinterval); showinterval=null; document.title=title1;}\n");
-	client_write(httpd,"\nfunction alertar(text){ if (document.title == title1) document.title=text; else document.title=title1; }");	
+	client_write(httpd,"\nfunction alertar(text){ if (document.title == title1) document.title=text; else document.title=title1; }");
 	client_write(httpd,"\n\
 	window.document.onfocus=window.onfocus=function(e){blurred=false;stopalert();};\
 	window.document.onblur=window.onblur=function(e){blurred=true;}; \n ");
 
 	if (gUseSounds)
-	{		
+	{
 		client_write(httpd,"\nfunction play_click(){ if (typeof(click_sound1) != 'undefined') swfsound.startSound( click_sound1 ); /*else alert(typeof(click_sound1))*/;}");
 	}
 
@@ -2572,72 +2572,72 @@ static int action_conversation( webpidgin_client_t * httpd, const char * extra )
     if (conv) ///LA CONVERSACION YA EXISTE
     {
     	char buffermail[1024]="";
-    	
+
     	account = conv->account;
     	g_snprintf(buddyname, sizeof(buddyname), "%s", purple_conversation_get_name(conv));
-    
+
 		///si son iguales no muestro el buddyname
     	if (!purple_strequal(buddyname, purple_conversation_get_title(conv)))
 			g_snprintf(buffermail, sizeof(buffermail), " (%s) ", buddyname);
-    	
+
     	if (purple_conversation_get_type(conv) == PURPLE_CONV_TYPE_IM)
 		{
 			g_snprintf(buffer,sizeof(buffer),"Chatting With:&nbsp;<b>%s</b> %s from <i>%s</i>", purple_conversation_get_title(conv), buffermail, account->username);
 		}else
-		{			
+		{
 			g_snprintf(buffer,sizeof(buffer),"<b>%s</b> %s from <i>%s</i>", purple_conversation_get_title(conv), buffermail, account->username);
-		}    	
+		}
     }
-    else 
-    {    	
+    else
+    {
 		PurpleBuddy *buddy = find_buddy( name );
-		
+
 		if (buddy)
 		{
 			char buffermail[1024]="";
-			
+
 			g_snprintf(buddyname, sizeof(buddyname), "%s", buddy->name);
-			
+
 			///si son iguales no muestro el buddyname
 			if (!purple_strequal(buddyname, get_buddy_name(buddy)))
 				g_snprintf(buffermail, sizeof(buffermail), " (%s) ", buddyname);
-						
+
 			account = (buddy->account);
 			g_snprintf(buffer,sizeof(buffer),"Chatting With:&nbsp;<b>%s</b> %s from <i>%s</i>", get_buddy_name(buddy), buffermail, account->username);
 		}
     }
-    
+
     if (!account)
 	{
 		//return action_root(httpd, extra);
-		
+
 		client_write_http_header_redirect (httpd, "ActiveList");
 		return 1;
-	}		    
-    
+	}
+
     ///BUDDY ICON
 	if( gOptionShowBuddyIcon && purple_buddy_icons_find (account, buddyname))
 		g_snprintf(imgbuddyicon, sizeof(imgbuddyicon), "<img src='image?buddy=%s' class='buddyimg' />\n", buddyname);
 		//g_snprintf(imgbuddyicon, sizeof(imgbuddyicon), "<img src='image?biconid=%p' class='buddyimg' />\n", purple_buddy_icons_find (account, buddyname));
-		
+
 
     if (gGroupMessages)
     	g_snprintf(header,sizeof(header),"/conversation?%s%s#isend",time_stamp(),extra);
     else
     	g_snprintf(header,sizeof(header),"/conversation?%s%s",time_stamp(),extra);
     client_write_header( httpd,header);
-	
+
 	if (!gGroupMessages)
 		client_write(httpd, imgbuddyicon);
-		
-	
+
+
 	client_write(httpd, buffer);
-    client_write(httpd, "<BR>\n");    
+    client_write(httpd, "<BR>\n");
 
 
     /// Now our web form for the chat
     if (purple_account_is_connected(account))
-    {    	
+    {
 	    if (gUseJavascript && !gUseJSOnlyRef)
 	    {
 	    	g_snprintf(form,sizeof(form), "<form method=\"get\" action=\"/sendMessage?\" onsubmit=\"return send()\" >\n ");
@@ -2648,7 +2648,7 @@ static int action_conversation( webpidgin_client_t * httpd, const char * extra )
 	    	g_snprintf(form,sizeof(form), "<form method=\"get\" action=\"/sendMessage?\" >\n ");
 	    	g_strlcat(form, "<div>\n <input style=\"-wap-input-format: *m\" id=\"imsg\" name=\"msg\" tabindex=\"1\" size=\"48\" maxlength=\"1280\" autocomplete=\"off\" />\n", sizeof(form));
 	    }
-		
+
 
 	    g_snprintf(buffer,sizeof(buffer), "\n <input type=\"hidden\" name=\"to\" value=\"%s\" />\n", name);
 	    g_strlcat(form, buffer, sizeof(form));
@@ -2691,22 +2691,22 @@ static int action_conversation( webpidgin_client_t * httpd, const char * extra )
     /// show sally has an unread message for us. ( Just like the Active: buddies section on the root page )
     client_write(httpd,"<div id='active_chats'>\n");
     if (!gOptionWWWFrames)
-		show_active_chats( httpd, name );		
-    
+		show_active_chats( httpd, name );
+
     client_write(httpd,"</div>\n");
 
     if (gUseJavascript)
     {
-    	const char *encoded_name = purple_url_encode(name);    	
+    	const char *encoded_name = purple_url_encode(name);
 
-    	show_ajax_engine(httpd);    	
+    	show_ajax_engine(httpd);
 
 		client_write(httpd,"<script type='text/javascript'>var sending=false; var dcscrolled=false; var dcscheightold=0;\n \
 			var reqsend = null; var cola=new Array(); \n\n");
 
 		client_write(httpd,"\nfunction showmsg(msg, div, borrar){var divC=document.getElementById(div); \
 			if (borrar) divC.innerHTML=''; divC.innerHTML+=msg }\n");
-			
+
 		///captura el onkeyup y recalcula el tamaño de imsg
 		client_write(httpd,"\nfunction keyp_imsg(imsg){ var i=0;\
 	while(imsg.value.length>i && (imsg.value.charCodeAt(i)==13 || imsg.value.charCodeAt(i)==10)){i++}\
@@ -2718,18 +2718,18 @@ static int action_conversation( webpidgin_client_t * httpd, const char * extra )
 		client_write_vargs(httpd,"\nfunction true_send(){ if (sending || cola.length==0){ return;}; \n\
 			sending=true; var msg=cola.shift(); reajust_conversation(true);\
 			if (msg) get(reqsend, urlbase+ 'ajax?action=sendMessage&to=%s&msg=' + msg, 'if (req.status!=200) showmsg(\"<b>Error sending: '+ msg +'</b><br/>\", \"divError\"); true_send(); sending=false; /*update(\"conversation\", \"id=%s\");*/ ');  \
-			else sending=false; }\n" , encoded_name, encoded_name);		
+			else sending=false; }\n" , encoded_name, encoded_name);
 
 
 		///envia el mensaje mediante ajax
 		client_write(httpd, "\nfunction send(){ \n var msg=document.getElementById('imsg'); \
-			var nmsg= encodeURIComponent(msg.value).replace(/%20/g,'+'); msg.value=''; msg.focus();\n");		
+			var nmsg= encodeURIComponent(msg.value).replace(/%20/g,'+'); msg.value=''; msg.focus();\n");
 		client_write(httpd, "if (nmsg == '') return false; cola.push(nmsg); return false; }\n");
 
 		///pone el foco en el cuadro de escritura
 		client_write(httpd, "\nfunction enfocar(){ try {document.getElementById('imsg').focus();}catch(err){}}\n");
-		
-		
+
+
 		///REAJUSTA EL DIV CONVERSATION Y LO MUEVE AL NUEVO FINAL SI FUERZO O SI ANTES ESTABA AL FINAL
 		if (gGroupMessages && gGroupMessagesAutoH)
 		{
@@ -2739,12 +2739,12 @@ static int action_conversation( webpidgin_client_t * httpd, const char * extra )
 				if (dcscheightold != document.body.clientHeight || document.body.scrollHeight>document.body.clientHeight) \
 				{ comp_scroll_conversation(); divconv.style.height=(document.body.clientHeight) + 'px'; \n\
 				var overflow=document.body.scrollHeight-document.body.clientHeight+30; if (overflow<0)overflow=0;");
-				
+
 //client_write(httpd, "showmsg(divconv.style.height +' c- ' +typeof(click_sound1) + ' - ' + divconv.clientHeight + ' - ' + document.body.scrollHeight + ' - ' + document.body.clientHeight + ' - ' + dcscheightold + '<br>', 'divError'); ");
 
 			client_write(httpd, ";cambiado=true; divconv.style.height=(divconv.clientHeight-overflow) + \"px\";");
 
-//client_write(httpd, "showmsg(divconv.style.height +' d- ' +typeof(click_sound1) + ' - ' + divconv.clientHeight + ' - ' + document.body.scrollHeight + ' - ' + document.body.clientHeight + ' - ' + dcscheightold + '<br>', 'divError'); ");			
+//client_write(httpd, "showmsg(divconv.style.height +' d- ' +typeof(click_sound1) + ' - ' + divconv.clientHeight + ' - ' + document.body.scrollHeight + ' - ' + document.body.clientHeight + ' - ' + dcscheightold + '<br>', 'divError'); ");
 
 			client_write_vargs(httpd, ";dcscheightold = document.body.clientHeight; } }\
 				if (cambiado || !dcscrolled || forzar) scroll_conversation();\
@@ -2753,11 +2753,11 @@ static int action_conversation( webpidgin_client_t * httpd, const char * extra )
 		{
 			client_write(httpd, "\nfunction reajust_conversation(forzar){if(forzar) scroll_conversation()}\n");
 		}
-	
+
 		///COMPRUEBA EL SCROLL DE DIV CONV PARA VER SI HE MOVIDO LA BARRA Y EN ESE CASO NO SCROLLEAR AUTOMATICAMENTE
 		client_write(httpd, "\nfunction comp_scroll_conversation(){ var divconv=document.getElementById('conversation');\
 	dcscrolled=true; if (divconv.scrollTop+divconv.clientHeight >= divconv.scrollHeight && (document.body.clientHeight>440 && screen.height>500)) dcscrolled=false; }\n");
-		
+
 		///SCROLLEA AL FINAL
 		if (gGroupMessages)
 		{
@@ -2772,23 +2772,23 @@ static int action_conversation( webpidgin_client_t * httpd, const char * extra )
 		}
 		else
 			client_write(httpd, "\nfunction scroll_conversation(){}");
-		
+
 		///funcion a ejecutarse a intervalos regulares que realiza los envios
 		client_write(httpd, "\nfunction interval_function(){try {\
 			comp_scroll_conversation(); true_send(); reajust_conversation();\
 			if (cola.length > 0) showmsg (\"Pending messages in queue: \" + cola.length, \"divInfo\", true);\
 			else showmsg (\"\", \"divInfo\", true); setTimeout(\"interval_function()\",100);}\
 			catch (err){alert('ERROR SI: '+ err);}} \n");
-		
-		
+
+
 		///ONLOAD EVENT
-		client_write(httpd,"window.onload=function(e){enfocar();\n");		
+		client_write(httpd,"window.onload=function(e){enfocar();\n");
 
 
 		if (!gOptionWWWFrames)
 			client_write_vargs(httpd, "update(new Array ('conversation', 'active_chats'), \"id=%s\");", encoded_name);
 		else
-			client_write_vargs(httpd, "update(new Array ('conversation'), \"id=%s\");", encoded_name);		
+			client_write_vargs(httpd, "update(new Array ('conversation'), \"id=%s\");", encoded_name);
 
 		//client_write(httpd, "try {setInterval ('interval_function(); ', 100);} catch (err){alert('ERROR SI: '+ err);}");
 		///hack for pocket IE
@@ -2799,32 +2799,32 @@ static int action_conversation( webpidgin_client_t * httpd, const char * extra )
 //client_write(httpd,"var divconv=document.getElementById('conversation'); alert(divconv.style.height +' a- ' +screen.height + ' - ' + divconv.clientHeight + ' - ' + document.body.scrollHeight + ' - ' + document.body.clientHeight + ' - ' + dcscheightold);\n");
 
 		client_write(httpd,";dcscheightold=0;reajust_conversation(true);\n");
-		
-//client_write(httpd, "var divconv=document.getElementById('conversation'); showmsg(divconv.style.height +' b- ' +typeof(click_sound1) + ' - ' + divconv.clientHeight + ' - ' + document.body.scrollHeight + ' - ' + document.body.clientHeight + ' - ' + dcscheightold + '<br>', 'divError'); ");
-//client_write(httpd,"var divconv=document.getElementById('conversation'); alert(divconv.style.height +' b- ' +screen.height + ' - ' + divconv.clientHeight + ' - ' + document.body.scrollHeight + ' - ' + document.body.clientHeight + ' - ' + dcscheightold);\n");				
 
-		client_write(httpd,";}\n");					
-					
-		client_write(httpd,"window.onbeforeunload=function(e){try {if (cola.length > 0 || sending) return 'There are '+ (cola.length+1) + ' messages still in queue pending to be sent';}catch(err){}}\n");		
-		
+//client_write(httpd, "var divconv=document.getElementById('conversation'); showmsg(divconv.style.height +' b- ' +typeof(click_sound1) + ' - ' + divconv.clientHeight + ' - ' + document.body.scrollHeight + ' - ' + document.body.clientHeight + ' - ' + dcscheightold + '<br>', 'divError'); ");
+//client_write(httpd,"var divconv=document.getElementById('conversation'); alert(divconv.style.height +' b- ' +screen.height + ' - ' + divconv.clientHeight + ' - ' + document.body.scrollHeight + ' - ' + document.body.clientHeight + ' - ' + dcscheightold);\n");
+
+		client_write(httpd,";}\n");
+
+		client_write(httpd,"window.onbeforeunload=function(e){try {if (cola.length > 0 || sending) return 'There are '+ (cola.length+1) + ' messages still in queue pending to be sent';}catch(err){}}\n");
+
 		///TENGO QUE VER SI AÑADIR UNA FUNCION Q ELIMINE LOS REQ AL UNLOAD
-		///client_write(httpd,"window.onunload=function(e){try {alert(reqsend.readyState);alert(reqsend.abort());alert(reqsend.readyState);}catch(err){}}\n");		
-		
+		///client_write(httpd,"window.onunload=function(e){try {alert(reqsend.readyState);alert(reqsend.abort());alert(reqsend.readyState);}catch(err){}}\n");
+
 		if (!gUseJSOnlyRef)
 		{
 			client_write(httpd,"\ntry {var imsg=document.getElementById('imsg'); imsg.onkeydown=function(e){ \
 			var keynum; var ev=(window.event)?event:e; keynum = ev.keyCode; \
 			if ((keynum==13 || keynum==10) && !ev.shiftKey) {send(); return false;}else {return true;} \
 			}} catch (err){};\n");
-									
+
 			client_write(httpd,"\n var reqsend = newxmlhttpreq();\n");
-			
+
 			/*client_write(httpd,"\ntry {var imsg=document.getElementById('imsg'); imsg.onkeypress=function(e){ \
 			var keynum; var ev=(window.event)?event:e; keynum = ev.keyCode; alert(keynum);\
 			if ((keynum==13 || keynum==10) && !ev.shiftKey) {send(); return false;}else {return true;} \
 			}} catch (err){};\n");*/
 		}
-		
+
 		client_write(httpd,"</script>\n");
 
 	}
@@ -3015,7 +3015,7 @@ static int action_ajax( webpidgin_client_t * httpd, const char * extra )
 
 		    if (conv)
 		    {
-		    	show_conversation(httpd, conv);		    	
+		    	show_conversation(httpd, conv);
 		    }else
 		    {
 		        purple_debug_info("WebPidgin 2","conversation::Could not locate conversation for %s\n", id);
@@ -3053,19 +3053,19 @@ static char * strtrim(const char* cad)
 {
 	const char *begin;
 	const char *end;
-	
+
 	begin = cad;
 	end=begin + strlen(begin) - 1;
-	
+
 	while( (g_ascii_isspace (*begin) || g_ascii_iscntrl(*begin)) && *begin != '\0' )
 		begin++;
-	
+
 	if (strlen(begin)>1)
 	{
 		while(g_ascii_isspace (*end) || g_ascii_iscntrl(*end))
 			end--;
 	}
-	
+
 	return g_strndup(begin, end- begin +1);
 }
 
@@ -3106,9 +3106,9 @@ static PurpleConversation * sendMessage( webpidgin_client_t * httpd, const char 
 
 			///no deberia ser necesario mas, puesto que he incluido el codigo en find_conversation
             /*c = purple_find_conversation_with_account(PURPLE_CONV_TYPE_IM, b->name, b->account);
-            if (!c)*/            
+            if (!c)*/
             {
-                c = purple_conversation_new(PURPLE_CONV_TYPE_IM, b->account, b->name);                                
+                c = purple_conversation_new(PURPLE_CONV_TYPE_IM, b->account, b->name);
             }
 
             if (!c)
@@ -3191,7 +3191,7 @@ static int action_sendMessage( webpidgin_client_t * httpd, const char * extra )
     if (c)
 	{
 		char buffer[4096];
-		
+
 		if (gGroupMessages)
 			g_snprintf(buffer, sizeof(buffer), "/conversation?%sid=%p#isend",time_stamp(),c);
 		else
@@ -3216,13 +3216,13 @@ static int action_sessions( webpidgin_client_t * httpd, const char * extra )
 
 static const char* get_mime_type(const char* extension)
 {
-	if (!(strcmp (extension, "jpe") && strcmp (extension, "jpeg") && strcmp (extension, "jpg")))						
+	if (!(strcmp (extension, "jpe") && strcmp (extension, "jpeg") && strcmp (extension, "jpg")))
 		return "image/jpeg";
-	else if (!(strcmp (extension, "gif")))						
+	else if (!(strcmp (extension, "gif")))
 		return "image/gif";
-	else if (!(strcmp (extension, "png")))										
+	else if (!(strcmp (extension, "png")))
 		return "image/png";
-	else if (!(strcmp (extension, "tiff") && strcmp (extension, "tif")))						
+	else if (!(strcmp (extension, "tiff") && strcmp (extension, "tif")))
 		return "image/tiff";
 	else if (!(strcmp (extension, "bmp")))
 		return "image/bmp";
@@ -3248,9 +3248,9 @@ static int action_image( webpidgin_client_t * httpd, const char * extra )
 	const char *ext=NULL;
 	gconstpointer icon=NULL;
 	size_t tam;
-	
-	
-	purple_debug_info("WebPidgin 2","%s\n",__FUNCTION__);	
+
+
+	purple_debug_info("WebPidgin 2","%s\n",__FUNCTION__);
 	purple_debug_info("WebPidgin 2-SHAOI","%s\n", extra);
 
     client_write( httpd,"");
@@ -3258,38 +3258,38 @@ static int action_image( webpidgin_client_t * httpd, const char * extra )
     client_write_date(httpd);
     client_write( httpd,"Server: WebPidginZ\n");
     client_write( httpd,"Connection: close\n");
-        
+
     if ( (p = g_hash_table_lookup(vars, "buddy")))
-    {		    
+    {
     	name = purple_url_decode (p);
 		buddy = find_buddy(name);
-		
+
 		//purple_debug_info("WebPidgin 2-SHAOX2","%d\n",buddy);
-		
+
 		if (buddy)
-		{			
+		{
 			PurpleBuddyIcon* pbi;
-					
+
 			pbi = purple_buddy_icons_find(buddy->account, name);
-			
+
 			purple_debug_info("WebPidgin 2-SHAOX3","%d %s\n",pbi, 	purple_buddy_icon_get_full_path(pbi));
-			
+
 			///FOUND BUDDY ICON!!!
 			if (pbi)
-			{							
+			{
 				icon= purple_buddy_icon_get_data(pbi, &tam);
 				ext= purple_buddy_icon_get_extension (pbi);
-					
-				//purple_debug_info("WebPidgin 2-SHAOX4","%d %d\n",icon, tam);							
+
+				//purple_debug_info("WebPidgin 2-SHAOX4","%d %d\n",icon, tam);
 			}
-		} 
+		}
     }
     else if ((p = g_hash_table_lookup(vars, "smiley")) && !purple_strequal(p,""))
-    {	    	    	 
+    {
     	gsize sizeg;
     	guchar *cadg;
     	const char *gesto;
-    	
+
     	cadg=purple_base16_decode(p, &sizeg);
     	if (cadg)
     	{
@@ -3297,101 +3297,101 @@ static int action_image( webpidgin_client_t * httpd, const char * extra )
     		purple_debug_info("WebPidgin 2-SHAOSMILEY","smiley coded:[%s] dec:[%s]\n", p, gesto);
     	}
     	else
-    	{    		
+    	{
     		gesto=purple_url_decode (p);
     		purple_debug_info("WebPidgin 2-SHAOSMILEY","smiley NO coded:[%s] cod:[%s]\n", gesto, purple_base16_encode(gesto, strlen(gesto)));
     	}
-    		
-    	
-    	
+
+
+
     	char *convid = g_hash_table_lookup(vars, "cid");
-			
+
 			///SMILEYS POR CONV
 		if (convid)
 		{
-			PurpleConversation * conv = find_conversation(convid);	
-					
-			
+			PurpleConversation * conv = find_conversation(convid);
+
+
 			if (conv)
 			{
-				GHashTable *csmileysr;			
+				GHashTable *csmileysr;
 				PurpleStoredImage * newicon=NULL;
 				csmileysr= purple_conversation_get_data(conv, "webpidgin_custom_smileys_received");
-				
+
 				if (csmileysr)
 				{
 					newicon=g_hash_table_lookup(csmileysr, gesto);
 					if (newicon)
-					{						
+					{
 						icon= purple_imgstore_get_data(newicon);
-						tam=purple_imgstore_get_size(newicon);	
+						tam=purple_imgstore_get_size(newicon);
 						ext= purple_util_get_image_extension(icon, tam);
 						purple_debug_info("WebPidgin 2-SHAOWCSR","%s i %p %u\n", gesto, icon, tam);
 					}
 				}
-				
+
 				PidginConversation * pconv =PIDGIN_CONVERSATION(conv);
 				GtkIMHtml* imhtml = GTK_IMHTML(pconv->imhtml);
 				GtkIMHtmlSmiley* gtksmil=gtk_imhtml_smiley_get(imhtml, purple_account_get_protocol_name(conv->account), gesto);
-				
-				
+
+
 				if (gtksmil)
 				{
 					purple_debug_info("WebPidgin 2-SHAOSMILBA","smil[%s][%p][%s][%u]\n",gtksmil->file, gtksmil->data, gtksmil->smile, gtksmil->datasize);
-					
-					
+
+
 					///SMILEY EN MEMORIA
 					if (gtksmil->data)
-					{						
+					{
 						newicon=purple_imgstore_add(gtksmil->data, gtksmil->datasize, NULL);
 					}
 					///SMILEY EN DISCO
 					else if ( gtksmil->file)
 					{
-						newicon=purple_imgstore_new_from_file(gtksmil->file);												    			
-					}	
-															
+						newicon=purple_imgstore_new_from_file(gtksmil->file);
+					}
+
 					if (newicon)
 					{
-						if (!csmileysr)							
+						if (!csmileysr)
 							csmileysr=g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
-						
-						//purple_debug_info("WebPidgin 2-SHAOWCSR2","%p i %p\n", csmileysr, newicon);	
+
+						//purple_debug_info("WebPidgin 2-SHAOWCSR2","%p i %p\n", csmileysr, newicon);
 						g_hash_table_replace(csmileysr, g_strdup(gesto), newicon);
-						//purple_debug_info("WebPidgin 2-SHAOWCSR2b","%p i %p\n", csmileysr, newicon);							
+						//purple_debug_info("WebPidgin 2-SHAOWCSR2b","%p i %p\n", csmileysr, newicon);
 						purple_conversation_set_data(conv, "webpidgin_custom_smileys_received", csmileysr);
-						
+
 						icon= purple_imgstore_get_data(newicon);
-						tam=purple_imgstore_get_size(newicon);							
+						tam=purple_imgstore_get_size(newicon);
 						ext= purple_util_get_image_extension(icon, tam);
 					}
-					
+
 				}
-			}				
+			}
 		}
-    	
-    	
-			///CUSTOM SMILEYS 
+
+
+			///CUSTOM SMILEYS
 		if (!icon ||!tam || !ext)
 		{
 			PurpleSmiley * smiley = purple_smileys_find_by_shortcut(gesto);
-			
+
 			if (smiley)
 			{
 				purple_debug_info("WebPidgin 2-SHAOSMIL","smiley [%s] -> %p\n", gesto, smiley);
 				icon = purple_smiley_get_data(smiley, &tam);
 				ext=purple_smiley_get_extension (smiley);
 			}else
-			{				
+			{
 				///SMILEYS NO CUSTOM BY PROTOCOL
 				GtkIMHtmlSmiley *gtksmiley= find_smiley(g_hash_table_lookup(vars, "protoid"), gesto);
-				
+
 				if (gtksmiley)
 				{
 					PurpleStoredImage * newicon=purple_imgstore_new_from_file(gtksmiley->file);
-					
-					purple_debug_info("WebPidgin 2->SHAOSMILAB2","%s %s \n",gtksmiley->smile, gtksmiley->file);  	    	
-			
+
+					purple_debug_info("WebPidgin 2->SHAOSMILAB2","%s %s \n",gtksmiley->smile, gtksmiley->file);
+
 					if (newicon)
 					{
 						icon= purple_imgstore_get_data(newicon);
@@ -3401,41 +3401,41 @@ static int action_image( webpidgin_client_t * httpd, const char * extra )
 				}
 			}
 		}
-		
+
 	/// ITS A BINARY STORED FILE
     }else if ((p = g_hash_table_lookup(vars, "file")) && !purple_strequal(p,""))
 	{
 		int index;
-		
-		sscanf(p,"%d",&index);		
+
+		sscanf(p,"%d",&index);
 		purple_debug_info("WebPidgin 2-SHAOFILE","file %s [%d]\n", p, index);
-		
+
 		if (index > -1 && index < sizeof(binary_data_array))
 		{
 			icon = binary_data_array[index].binary_data;
 			tam = binary_data_array[index].binary_data_size;
 			ext=g_strrstr(binary_data_array[index].filename, ".");
-			
+
 			if (ext)
 				ext++; /// quito el punto
 			else
 				ext="";
-			
+
 			//ext= purple_util_get_image_extension(icon, tam);
 		}
 	}
-    
-    
+
+
     if (icon && tam && ext)
-	{		
-		client_write_vargs(httpd, "Content-type: %s\n", get_mime_type(ext));		
-		client_write_vargs(httpd, "Content-Length: %d\n\n", tam);	
-							
+	{
+		client_write_vargs(httpd, "Content-type: %s\n", get_mime_type(ext));
+		client_write_vargs(httpd, "Content-Length: %d\n\n", tam);
+
 		if (write(httpd->fd, icon, tam) < 1)
 			purple_debug_info("WebPidgin 2-SHAO","Error writing buddy image\n");
-	}				
-    
-    
+	}
+
+
 	g_hash_table_destroy(vars);
 	return 1;
 }
@@ -3443,14 +3443,14 @@ static int action_image( webpidgin_client_t * httpd, const char * extra )
 
 ///RECIBE ftid = PurpleXfer
 static int action_getfileTransfer( webpidgin_client_t * httpd, const char * extra )
-{	
+{
 	GHashTable* vars = parse_get_extra(extra);
 	gpointer p;
-	const char * name;	
+	const char * name;
 	size_t tam;
-	
-	
-	purple_debug_info("WebPidgin 2","%s\n",__FUNCTION__);	
+
+
+	purple_debug_info("WebPidgin 2","%s\n",__FUNCTION__);
 	purple_debug_info("WebPidgin 2-SHAOI","%s\n", extra);
 
     client_write( httpd,"");
@@ -3458,87 +3458,87 @@ static int action_getfileTransfer( webpidgin_client_t * httpd, const char * extr
     client_write_date(httpd);
     client_write( httpd,"Server: WebPidginZ\n");
     client_write( httpd,"Connection: close\n");
-        
+
     if ( (p = g_hash_table_lookup(vars, "ftid")))
-    {	
+    {
     	PurpleXfer *xfer=NULL;
     	const char *pdec=purple_url_decode (p);
     	long long unsigned int ftid=0;
-    	
+
     	//purple_debug_info("WebPidgin 2-SHAOa","%p %llx %s\n", xfer, ftid, pdec);
-    	
-    	if (sscanf(pdec,"%llx",&ftid) == 1) 
+
+    	if (sscanf(pdec,"%llx",&ftid) == 1)
 		{
 			GList* iter=purple_xfers_get_all();
-		
+
 			while (iter)
 			{
 				xfer = iter->data;
-				
+
 				purple_debug_info("WebPidgin 2-SHAO","XFER:%p FTID:%llx %s\n", xfer, ftid, xfer->local_filename);
-				
+
 				if (xfer == (void *)ftid)
 					iter=NULL;
 				else
 					iter=iter->next;
 			}
 		}
-    	    	
+
 		///FOUND!!!
     	if (xfer)
     	{
     		char bufferfile[4096];
     		size_t readed=0;
     		FILE *f;
-    		
+
     		f= fopen(xfer->local_filename, "rb");
-    		
+
     		if (f)
-    		{    							    			
+    		{
     			char *header = g_strdup_printf("Content-Disposition: attachment; filename=\"%s\"\n", xfer->filename);
     			client_write( httpd, header);
     			g_free(header);
-    			
+
     			header = g_strdup_printf("Content-Length: %d\n", xfer->size);
     			client_write( httpd, header);
     			g_free(header);
-    				
-				client_write( httpd,"Content-type: application/octet-stream\n\n");    				
-    			
+
+				client_write( httpd,"Content-type: application/octet-stream\n\n");
+
     			///Leo el fichero hasta el final
 				do
 				{
 					readed=fread(bufferfile, sizeof(char), sizeof(bufferfile)/sizeof(char), f);
-				
+
 					if (write(httpd->fd, bufferfile, readed) < 1)
-						purple_debug_info("WebPidgin 2-SHAO","Error writing file\n");										
-				}while (readed == (sizeof(bufferfile)/sizeof(char)));								
-				
+						purple_debug_info("WebPidgin 2-SHAO","Error writing file\n");
+				}while (readed == (sizeof(bufferfile)/sizeof(char)));
+
 				fclose(f);
     		}
     	}
     }
-    
+
     /*
     if (icon && tam && ext)
-	{									
-		if (!(strcmp (ext, "jpe") && strcmp (ext, "jpeg") && strcmp (ext, "jpg")))						
-			
-		else if (!(strcmp (ext, "gif")))						
+	{
+		if (!(strcmp (ext, "jpe") && strcmp (ext, "jpeg") && strcmp (ext, "jpg")))
+
+		else if (!(strcmp (ext, "gif")))
 			client_write( httpd,"Content-type: image/gif\n\n");
-		else if (!(strcmp (ext, "png")))										
+		else if (!(strcmp (ext, "png")))
 			client_write( httpd,"Content-type: image/png\n\n");
-		else if (!(strcmp (ext, "tiff") && strcmp (ext, "tif")))						
+		else if (!(strcmp (ext, "tiff") && strcmp (ext, "tif")))
 			client_write( httpd,"Content-type: image/tiff\n\n");
 		else if (!(strcmp (ext, "bmp")))
 			client_write( httpd,"Content-type: image/bmp\n\n");
 		else
-			client_write( httpd,"Content-type: image/x-icon\n\n");											
-							
+			client_write( httpd,"Content-type: image/x-icon\n\n");
+
 		if (write(httpd->fd, icon, tam) < 1)
 			purple_debug_info("WebPidgin 2-SHAO","Error writing buddy image\n");
-	}				
-    
+	}
+
     */
 	g_hash_table_destroy(vars);
 	return 1;
@@ -3546,11 +3546,11 @@ static int action_getfileTransfer( webpidgin_client_t * httpd, const char * extr
 
 
 static int action_customcss( webpidgin_client_t * httpd, const char * extra )
-{	
+{
 	if (!gUseCustomCSS)
 		return 0;
-		
-	purple_debug_info("WebPidgin 2","%s\n",__FUNCTION__);	
+
+	purple_debug_info("WebPidgin 2","%s\n",__FUNCTION__);
 	purple_debug_info("WebPidgin 2-SHAOI","%s\n", extra);
 
     client_write( httpd,"");
@@ -3559,18 +3559,18 @@ static int action_customcss( webpidgin_client_t * httpd, const char * extra )
     client_write( httpd,"Server: WebPidginZ\n");
     client_write( httpd,"Connection: close\n");
     client_write( httpd,"Content-type: text/css;charset=utf-8\n\n");
-        
-    
+
+
     char bufferfile[4096];
     size_t readed=0;
-    FILE *f;   
-    char filecss[4096]; 
+    FILE *f;
+    char filecss[4096];
     g_snprintf(filecss, sizeof(filecss), "%s%s%s",  purple_user_dir(), G_DIR_SEPARATOR_S, "custom.css");
-    
+
     f= fopen(filecss, "rb");
-    		
+
     if (f)
-	{   
+	{
 		struct stat fileStat;
 		fstat(f,&fileStat);
 		//if(fstat(f,&fileStat) >= 0)
@@ -3578,19 +3578,19 @@ static int action_customcss( webpidgin_client_t * httpd, const char * extra )
 			/*char *header = g_strdup_printf("Content-Length: %d\n\n", fileStat.st_size);
 			client_write( httpd, header);
 			g_free(header);*/
-							
+
 			do
 			{
 				readed=fread(bufferfile, sizeof(char), sizeof(bufferfile)/sizeof(char), f);
-			
+
 				if (write(httpd->fd, bufferfile, readed) < 1)
-					purple_debug_info("WebPidgin 2-SHAO","Error writing file\n");										
-			}while (readed == (sizeof(bufferfile)/sizeof(char)));								
-			
+					purple_debug_info("WebPidgin 2-SHAO","Error writing file\n");
+			}while (readed == (sizeof(bufferfile)/sizeof(char)));
+
 			fclose(f);
 		}
 	}
-    
+
 	return 1;
 }
 
@@ -3697,28 +3697,28 @@ static int action_status( webpidgin_client_t * httpd, const char * unused )
     const char * my_addr = NULL;
     g_snprintf(buffer,1024,"/Status?%s",time_stamp());
     client_write_header( httpd,buffer);
-        
+
 	client_write(httpd,"<img src='logo.png' class='logo'/>\n");
     client_write(httpd,"WebPidgin-Z Version: ");
     client_write(httpd,WEBPIDGIN_VERSION);
     client_write_vargs(httpd,"<BR>Pidgin Version: %s", VERSION);
     client_write(httpd,"<BR><BR>\n");
-    
-    
+
+
 //    my_addr = purple_network_get_local_system_ip(httpd->fd);
 //    g_snprintf(buffer,1024,"System IP: %s<BR>\n", my_addr? my_addr : "N/A" );
 //    client_write(httpd,buffer);
-	
+
     my_addr = purple_network_get_my_ip(-1);
     g_snprintf(buffer,1024,"Public IP: %s<BR>\n", my_addr? my_addr : "N/A" );
     client_write(httpd,buffer);
-    
+
 	g_snprintf(buffer,1024,"Remote IP: %s<BR>\n", httpd->ip_client );
     client_write(httpd,buffer);
-        
+
 	g_snprintf(buffer,1024,"Remote IP X-Forwarded-For: %s<BR>\n", httpd->ip_client_xff ? httpd->ip_client_xff : "N/A");
     client_write(httpd,buffer);
-    
+
 	g_snprintf(buffer,1024,"RSS Feed: %s<BR>\n",gOptionRSSFeed ? "Enabled" : "Disabled");
     client_write(httpd,buffer);
 
@@ -3736,20 +3736,20 @@ static int action_status( webpidgin_client_t * httpd, const char * unused )
         g_snprintf(buffer,1024," *Dynamic*");
         client_write(httpd,buffer);
     }
-    
+
     client_write(httpd,"<BR>\n");
     client_write(httpd,"<HR>\n");
 
     show_last_sessions (httpd, gShowNLastSessions);
-    
+
 
     //More stuff here like, e-mail notices etc
     //client_write(httpd,"<B>New E-Mail:</B>");
-    //client_write(httpd,"Updates");    
+    //client_write(httpd,"Updates");
     show_active_chats( httpd, NULL );
-    
+
     client_write_tail( httpd );
-    
+
     return 1;
 }
 
@@ -3958,7 +3958,7 @@ static int action_help( webpidgin_client_t * httpd, const char * unused )
     g_snprintf(buffer,1024,"/Help?%s",time_stamp());
     client_write_header( httpd,buffer);
     client_write(httpd,"<B>Help:</B><BR><BR>\n");
-        
+
     client_write(httpd,"1. <B>RSS Feed</B>\n");
     client_write(httpd,"<div style=\"margin-left: 20px;\">\n");
     my_addr = purple_network_get_my_ip(-1);
@@ -3985,11 +3985,11 @@ static int action_help( webpidgin_client_t * httpd, const char * unused )
     client_write(httpd,"<BR>\n");
     client_write(httpd,"<A HREF=http://www.shaorang.com/webpidginz/>WebPidgin-Z Home Page</A><BR>\n");
     client_write(httpd,"</p><BR><p>\n");
-    
+
     client_write(httpd,"<b>WebPidgin Original:</b><BR>\n");
     client_write(httpd,"Copyright (C) 2006,2007 Sebastian Sobolewski<BR>\n");
     client_write(httpd,"Additional Contributors:<BR>\n");
-    client_write(httpd,"&nbsp;&nbsp;David Morse<BR>\n");        
+    client_write(httpd,"&nbsp;&nbsp;David Morse<BR>\n");
     client_write(httpd,"<A HREF=http://www.thirdmartini.com/index.php/WebPidgin_2.x>Original WebPidgin Home Page</A><BR>\n");
     client_write(httpd,"</p></div><BR>\n");
 
@@ -4016,13 +4016,13 @@ static webpidgin_parse_t webpidgin_actions[] = {
     { "/conversation",action_conversation },
     { "/sendMessage",action_sendMessage },
     { "/Accounts",action_accounts },
-    { "/Options",action_options },    
+    { "/Options",action_options },
     { "/history",action_history },
     { "/Status",action_status },
     { "/status.rss",action_rss },
     { "/Help", action_help },
     { "/Sessions", action_sessions },
-    { "/image", action_image },    
+    { "/image", action_image },
     { "/getFile", action_getfileTransfer },
     { "/custom.css", action_customcss }
 };
@@ -4225,7 +4225,7 @@ static int client_parse_and_dispatch(webpidgin_client_t *httpd, char * buffer, c
     }
 
 	add_session (httpd);
-	
+
 
     /// Id auth is enabled check the response
     if( httpd->webpidgin->auth )
@@ -4422,16 +4422,16 @@ static int client_parse_and_dispatch(webpidgin_client_t *httpd, char * buffer, c
                     return webpidgin_actions[action].callback( httpd, data );
                 }
             }
-            
+
             /// SEARCHING FOR INCLUDED BINARY FILES
             for(action=0; action< ( sizeof(binary_data_array)/sizeof(webpidgin_parse_bin) ); action++ )
             {
             	purple_debug_info("WebPidgin 2-SHAO","File Compare [%s] <--> [%s] %lu %lu\n",purl,binary_data_array[action].filename, sizeof(binary_data_array[action].binary_data), binary_data_array[action].binary_data_size);
-            	
+
             	if( strcmp(binary_data_array[action].filename, purl) == 0 )
                 {
-                	char vars[1024];                    
-                    
+                	char vars[1024];
+
                     g_snprintf(vars, sizeof(vars),"file=%d", action);
                     return action_image(httpd, vars);
                 }
@@ -4472,7 +4472,7 @@ static void add_session (webpidgin_client_t *httpd)
 
 
 	purple_debug_info("WebPidgin 2/SHAO","Adding session %s %s\n", httpd->ip_client_xff?httpd->ip_client_xff:"", httpd->user_agent);
-	
+
 	gpointer = last_sessions;
 	while (gpointer)
 	{
@@ -4552,7 +4552,7 @@ static void client_request_cb(gpointer data, gint sock, PurpleInputCondition con
         return;
     }
 
-	//COMPRUEBO LA IP DE ORIGEN        
+	//COMPRUEBO LA IP DE ORIGEN
     if( gOptionRestrictAccessByIP && !purple_strequal (httpd->ip_client, gAllowedIP ) )
     {
         /// client connecting from blocked ip
@@ -4563,7 +4563,7 @@ static void client_request_cb(gpointer data, gint sock, PurpleInputCondition con
 		client_end_connection(httpd);
         return;
     }
-    
+
     buffer[len] = '\0';
 
     /// Parse our request
@@ -4705,22 +4705,22 @@ static void get_keys(gpointer key, gpointer value, gpointer user_data)
 }
 
 static void httpd_stop(webpidgin_data_t * webpidgin)
-{		
+{
 	if (active_httpds)
-	{	
-		GList* gl = NULL;	
+	{
+		GList* gl = NULL;
 		/// DEBO HACER ESTO POR CULPA DE WIN32 Y SUS ANTICUADAS LIBRERIAS
 		//gl = g_hash_table_get_keys(active_httpds);
-		g_hash_table_foreach(active_httpds, get_keys, &gl);		
-		
+		g_hash_table_foreach(active_httpds, get_keys, &gl);
+
 		purple_debug(PURPLE_DEBUG_INFO, "WebPidgin 2-SHAO", "Stopping http server, still %u clients active.\n", g_list_length (gl));
-		
+
 		while (gl)
-		{					
+		{
 			client_end_connection(gl->data);
-			gl=gl->next;			
-		}		
-		
+			gl=gl->next;
+		}
+
 		g_list_free(gl);
 	}
 
@@ -4731,10 +4731,10 @@ static void httpd_stop(webpidgin_data_t * webpidgin)
 	if( webpidgin->fdServerSocket >= 0 )
     {
 		purple_input_remove( webpidgin->iListenWatcher );
-			
+
 		close( webpidgin->fdServerSocket );
-		webpidgin->fdServerSocket = -1;				
-		
+		webpidgin->fdServerSocket = -1;
+
 		/// Session connections will remain open until
 		/// the client endpoint closes it ( this is ok )
 		/// For paranoia reasons we may want to force drop them if we choose
@@ -4778,19 +4778,19 @@ static void httpd_restart(webpidgin_data_t * webpidgin)
     {
         usListenPort = gOptionPort;
     }
-    
+
     purple_debug(PURPLE_DEBUG_INFO, "WebPidgin 2-SHAO", "Port: (%d).\n",usListenPort);
-    
+
     if( usListenPort != webpidgin->usListenPort )
     {
         httpd_stop(webpidgin);
         webpidgin->usListenPort = usListenPort;
-						
+
         if( ! purple_network_listen( usListenPort,SOCK_STREAM ,webpidgin_listen_cb, (gpointer)webpidgin ) )
         {
         	char buffer[1024];
         	g_snprintf(buffer,sizeof(buffer), "Loading::WebPidgin could not listen port: (%d).\n", usListenPort);
-        	
+
             purple_debug(PURPLE_DEBUG_INFO, "WebPidgin 2", "%s", buffer);
             purple_notify_error(webpidgin_plugin, "Error", buffer, "Maybe another instance is still running. \nUnload/load webpidgin-z after a few seconds");
             webpidgin->usListenPort = 0;
@@ -4819,8 +4819,8 @@ static gboolean plugin_load(PurplePlugin *plugin)
         return FALSE;
     }
     memset( webpidgin,0, sizeof(webpidgin_data_t) );
-    webpidgin->fdServerSocket = -1;    
-    webpidgin->usListenPort = -1;    
+    webpidgin->fdServerSocket = -1;
+    webpidgin->usListenPort = -1;
 
     purple_network_init();
 
@@ -4838,10 +4838,10 @@ static gboolean plugin_load(PurplePlugin *plugin)
 
 	purple_signal_connect(purple_notify_get_handle(), "displaying-email-notification",
 						plugin, PURPLE_CALLBACK(notify_email_cb), NULL);
-						
+
 	purple_signal_connect(purple_conversations_get_handle(), "chat-invited",
 						plugin, PURPLE_CALLBACK(chat_invited_cb), NULL);
-						
+
 	purple_signal_connect(purple_xfers_get_handle(), "file-recv-complete", plugin,
 								PURPLE_CALLBACK(auto_accept_complete_cb), NULL);
 
@@ -4849,13 +4849,13 @@ static gboolean plugin_load(PurplePlugin *plugin)
 	nonce_list = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
 
     purple_debug(PURPLE_DEBUG_INFO, "WebPidgin 2", "WebPidgin plugin loaded.\n");
-        
+
     return TRUE;
 }
 
 static gboolean plugin_unload(PurplePlugin *plugin)
 {
-	httpd_stop(webpidgin);        
+	httpd_stop(webpidgin);
 
     purple_debug(PURPLE_DEBUG_INFO, "WebPidgin 2", "WebPidgin plugin unloaded.\n");
     return TRUE;
@@ -4966,7 +4966,7 @@ static gboolean options_entry_cb(GtkWidget *widget, GdkEventFocus *evt, gpointer
         return FALSE;
 
     if (!strcmp(data, "server_port")) {
-        //purple_prefs_set_string("/plugins/webpidgin/server_port", gtk_entry_get_text(GTK_ENTRY(widget)));        
+        //purple_prefs_set_string("/plugins/webpidgin/server_port", gtk_entry_get_text(GTK_ENTRY(widget)));
         int size = 0;
         const char * str = gtk_entry_get_text(GTK_ENTRY(widget));
         sscanf( str,"%d",&size);
@@ -5030,15 +5030,15 @@ static GtkWidget * get_config_frame(PurplePlugin *plugin)
 
     ret=gtk_notebook_new();
 
-    /// Web server segment 
-    tab = gtk_vbox_new(FALSE, 5); 
-    gtk_notebook_append_page((GtkNotebook *)ret, tab, NULL); 
+    /// Web server segment
+    tab = gtk_vbox_new(FALSE, 5);
+    gtk_notebook_append_page((GtkNotebook *)ret, tab, NULL);
     gtk_notebook_set_tab_label_text ((GtkNotebook *)ret, tab, _("Web Server"));
-    
+
     frame = pidgin_make_frame(tab, _("Web Server Port:"));
     vbox = gtk_vbox_new(FALSE, 5);
     gtk_container_add(GTK_CONTAINER(frame), vbox);
-             
+
 
   /*  entry = gtk_entry_new();
     gtk_box_pack_start(GTK_BOX(vbox), entry, FALSE, FALSE, 0);
@@ -5084,12 +5084,12 @@ static GtkWidget * get_config_frame(PurplePlugin *plugin)
                                      purple_prefs_get_bool("/plugins/webpidgin/restrict_access_by_ip"));
     g_signal_connect(G_OBJECT(toggle), "toggled",
                          G_CALLBACK(type_toggle_cb), "restrict_access_by_ip");
-	
+
 	entry = gtk_entry_new();
-	hbox = gtk_hbox_new(FALSE, 5);	
+	hbox = gtk_hbox_new(FALSE, 5);
     gtk_box_pack_start(GTK_BOX(hbox), entry, TRUE, TRUE, 20);
     gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
-    gtk_entry_set_max_length(GTK_ENTRY(entry), 256);    
+    gtk_entry_set_max_length(GTK_ENTRY(entry), 256);
     gtk_entry_set_text(GTK_ENTRY(entry),purple_prefs_get_string("/plugins/webpidgin/allowed_ip"));
     g_signal_connect(G_OBJECT(entry), "focus-out-event", G_CALLBACK(options_entry_cb), "allowed_ip");
 
@@ -5123,7 +5123,7 @@ static GtkWidget * get_config_frame(PurplePlugin *plugin)
 	tab = gtk_vbox_new(FALSE, 5);
     gtk_notebook_append_page((GtkNotebook *)ret, tab, NULL);
     gtk_notebook_set_tab_label_text ((GtkNotebook *)ret, tab, _("Extra options"));
-    
+
     frame = pidgin_make_frame(tab, _("Interface:"));
     vbox = gtk_vbox_new(FALSE, 5);
     gtk_container_add(GTK_CONTAINER(frame), vbox);
@@ -5178,12 +5178,12 @@ static GtkWidget * get_config_frame(PurplePlugin *plugin)
                                      purple_prefs_get_bool("/plugins/webpidgin/use_meta_refresh"));
     g_signal_connect(G_OBJECT(toggle), "toggled",
                          G_CALLBACK(type_toggle_cb), "use_meta_refresh");
-	
+
     vbox2 = gtk_vbox_new(FALSE, 5);
-    hbox = gtk_hbox_new(FALSE, 5);	
+    hbox = gtk_hbox_new(FALSE, 5);
     gtk_box_pack_start(GTK_BOX(hbox), vbox2, TRUE, TRUE, 20);
     gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
-    
+
 	sg = gtk_size_group_new(GTK_SIZE_GROUP_HORIZONTAL);
 	spin_button = gaim_gtk_prefs_labeled_spin_button(vbox2, _("_Seconds:"),
 			"/plugins/webpidgin/meta_refresh_seconds", 1, 3600, sg);
@@ -5207,8 +5207,8 @@ static GtkWidget * get_config_frame(PurplePlugin *plugin)
 
 
 
-    
-    
+
+
 
     sg = gtk_size_group_new(GTK_SIZE_GROUP_HORIZONTAL);
     spin_button = gaim_gtk_prefs_labeled_spin_button(vbox, _("_Font Adjust:"),
@@ -5218,9 +5218,9 @@ static GtkWidget * get_config_frame(PurplePlugin *plugin)
 	gaim_gtk_prefs_labeled_spin_button(vbox, _("Last sessions to show:"),
 			"/plugins/webpidgin/show_n_last_sessions", 1, 10, sg);
 
-	
-    hbox = gtk_hbox_new(FALSE, 5);	    
-    gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);    
+
+    hbox = gtk_hbox_new(FALSE, 5);
+    gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
 	toggle = gtk_check_button_new_with_mnemonic(_("Show non-authenticated sessions"));
     gtk_box_pack_start(GTK_BOX(hbox), toggle, TRUE, TRUE, 20);
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(toggle),
@@ -5239,12 +5239,12 @@ static GtkWidget * get_config_frame(PurplePlugin *plugin)
 
 
 	vbox2 = gtk_vbox_new(FALSE, 5);
-    hbox = gtk_hbox_new(FALSE, 5);	
+    hbox = gtk_hbox_new(FALSE, 5);
     gtk_box_pack_start(GTK_BOX(hbox), vbox2, TRUE, TRUE, 20);
     gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
-	
+
     toggle2 = gtk_check_button_new_with_mnemonic(_("Don't use Ajax when sending messages \n(solves some issues with slow connections and mobile browsers) "));
-    gtk_box_pack_start(GTK_BOX(vbox2), toggle2, TRUE, TRUE, 0);    
+    gtk_box_pack_start(GTK_BOX(vbox2), toggle2, TRUE, TRUE, 0);
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(toggle2),
                                      purple_prefs_get_bool("/plugins/webpidgin/use_jscript_only_refresh"));
     g_signal_connect(G_OBJECT(toggle2), "toggled",
@@ -5253,9 +5253,9 @@ static GtkWidget * get_config_frame(PurplePlugin *plugin)
 		gtk_widget_set_sensitive ((GtkWidget *)toggle2, FALSE);
 	g_signal_connect(G_OBJECT(toggle), "clicked",
 					 G_CALLBACK(gaim_gtk_toggle_sensitive), toggle2);
-					 					 	
+
     toggle2 = gtk_check_button_new_with_mnemonic(_("Enable sounds (requires Flash 8.0 or later)"));
-    gtk_box_pack_start(GTK_BOX(vbox2), toggle2, TRUE, TRUE, 0);    
+    gtk_box_pack_start(GTK_BOX(vbox2), toggle2, TRUE, TRUE, 0);
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(toggle2),
                                      purple_prefs_get_bool("/plugins/webpidgin/use_sounds"));
     g_signal_connect(G_OBJECT(toggle2), "toggled",
@@ -5264,7 +5264,7 @@ static GtkWidget * get_config_frame(PurplePlugin *plugin)
 		gtk_widget_set_sensitive ((GtkWidget *)toggle2, FALSE);
 	g_signal_connect(G_OBJECT(toggle), "clicked",
 					 G_CALLBACK(gaim_gtk_toggle_sensitive), toggle2);
-					 
+
 
 	sg = gtk_size_group_new(GTK_SIZE_GROUP_HORIZONTAL);
 	spin_button = gaim_gtk_prefs_labeled_spin_button(vbox, _("Trim conversations after N messages:"),
@@ -5276,8 +5276,8 @@ static GtkWidget * get_config_frame(PurplePlugin *plugin)
                                      purple_prefs_get_bool("/plugins/webpidgin/group_messages"));
     g_signal_connect(G_OBJECT(toggle), "toggled",
                          G_CALLBACK(type_toggle_cb), "group_messages");
-                         
-	
+
+
 	toggle = gtk_check_button_new_with_mnemonic(_("Use custom.css file"));
     gtk_box_pack_start(GTK_BOX(vbox), toggle, FALSE, FALSE, 0);
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(toggle),
@@ -5286,7 +5286,7 @@ static GtkWidget * get_config_frame(PurplePlugin *plugin)
                          G_CALLBACK(type_toggle_cb), "use_custom_css");
 
     gtk_widget_show_all(ret);
-    
+
     return ret;
 }
 
@@ -5341,12 +5341,12 @@ static void init_plugin(PurplePlugin *plugin)
 {
     purple_debug(PURPLE_DEBUG_INFO, "WebPidgin 2", "WebPidgin Init.\n");
     purple_prefs_add_none("/plugins/webpidgin");
-    
+
     if (purple_prefs_exists ("/plugins/webpidgin/server_port") && purple_prefs_get_type("/plugins/webpidgin/server_port") != PURPLE_PREF_INT)
     {
     	purple_prefs_remove("/plugins/webpidgin/server_port");
     }
-    
+
     purple_prefs_add_int("/plugins/webpidgin/server_port", 8888);
     purple_prefs_add_string("/plugins/webpidgin/server_user", "");
     purple_prefs_add_string("/plugins/webpidgin/server_password", "");
