@@ -1350,7 +1350,7 @@ static void webpidgin_buddy_list_walk( webpidgin_client_t * httpd,const char * e
 
             case PURPLE_BLIST_CONTACT_NODE:{
                 PurpleContact *contact = (PurpleContact *)node;
-                if ( contact->alias )
+                //if ( contact->alias )
                 {
                     /// not sure yet
                     //g_snprintf(buffer,sizeof(buffer),"<B>type=%d ( not sure )</B><BR>\n",node->type);
