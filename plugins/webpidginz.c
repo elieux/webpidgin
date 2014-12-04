@@ -1473,7 +1473,7 @@ static void show_active_chats( webpidgin_client_t * httpd, const char * except )
 
 static const char* get_active_chats(char * hash)
 {
-	static char ret[4096];
+	static char ret[16024];
     char buffer[4096];
     char extra_html[512];
     GList *cnv;
@@ -2077,7 +2077,7 @@ static int action_logout( webpidgin_client_t * httpd, const char * extra )
 
 static void show_conversation ( webpidgin_client_t * httpd, PurpleConversation * conv)
 {
-	char buffer[1024];
+	char buffer[16024];
 	GList *iter;
     const char * self;
     unsigned msgCount=0;
@@ -2101,7 +2101,7 @@ static void show_conversation ( webpidgin_client_t * httpd, PurpleConversation *
 
 		if (topic && strlen(topic)>0)
 		{
-			g_snprintf(buffer,1024,"<B>Topic:</B>&nbsp;%s<BR>", topic);
+			g_snprintf(buffer,sizeof(buffer),"<B>Topic:</B>&nbsp;%s<BR>", topic);
 			client_write(httpd, buffer);
 		}
 
@@ -2112,7 +2112,7 @@ static void show_conversation ( webpidgin_client_t * httpd, PurpleConversation *
             PurpleConvChatBuddy *buddy;
             buddy = (PurpleConvChatBuddy *) iter->data;
 
-            g_snprintf(buffer,1024,"&nbsp;%s%s", (buddy->alias)?(buddy->alias):(buddy->name), (iter->next)?", ":"");
+            g_snprintf(buffer,sizeof(buffer),"&nbsp;%s%s", (buddy->alias)?(buddy->alias):(buddy->name), (iter->next)?", ":"");
             client_write(httpd, buffer);
         }
     }
