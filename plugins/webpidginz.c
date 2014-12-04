@@ -40,7 +40,7 @@ static char  *license = "\
  *   - http://localhost:8888/ should display the Root/Home page
  */
 
-#define WEBPIDGIN_VERSION "2.0-Z-8"
+#define WEBPIDGIN_VERSION "2.0-Z-9"
 
 /**
  ******************************************* WEBPIDGIN-Z ***********************************************
