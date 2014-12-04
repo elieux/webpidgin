@@ -2177,10 +2177,8 @@ static void show_conversation ( webpidgin_client_t * httpd, PurpleConversation *
 						nbuddy++;
 					}
 					//purple_debug_info("WebPidgin 2-COLORIZE2","msg->who=%s nbuddy=%d\n", msg->who, nbuddy);
-					if (nbuddy >= NUM_COLORS)
-						nbuddy = (nbuddy%NUM_COLORS)+2;
 				}
-
+                nbuddy = ( nbuddy % (NUM_COLORS-2) )+2;
 				g_snprintf(stylenick,sizeof(stylenick),"color:%s", array_colors[nbuddy]);
 				g_snprintf(stylemsg,sizeof(stylemsg),"divmsgother");
             }
