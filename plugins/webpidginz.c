@@ -30,6 +30,8 @@ static char  *license = "\
 
 #define WEBPIDGIN_VERSION "2.0-Z-9"
 
+#define mymin(x, y) ((x) < (y) ? (x) : (y))
+
 #include "internal.h"
 #include "version.h"
 #include "gtkimhtml.h"
@@ -1268,7 +1270,7 @@ static const char* get_active_chats(char * hash)
         char extra[128] = "";
         char extra2[128] = "";
         char extra3[128] = "";
-        unsigned unseen_count=0;
+        unsigned seen_count=0,unseen_count=0,sent_count=0,other_count=0;
 
         PurpleBuddy * buddy;
 		PurpleStatus *status = NULL;
@@ -1300,15 +1302,20 @@ static const char* get_active_chats(char * hash)
 
 		//purple_debug_info("WebPidgin 2-SHAO","%s %d\n",purple_conversation_get_title(conv), conv->type);
 
-        totalm = g_list_length (conv->message_history);
 
 		if (gGroupMessages)
 			g_snprintf(extra3, sizeof(extra3), "#isend");
 
 
-		unseen_count= GPOINTER_TO_INT(purple_conversation_get_data(conv, "webpidgin_unseen_count"));
-		if (totalm >= unseen_count)
-			unseen_count=totalm - unseen_count;
+        totalm = g_list_length (conv->message_history);
+		other_count= GPOINTER_TO_INT(purple_conversation_get_data(conv, "webpidgin_other_count"));
+		totalm = totalm >= other_count ? totalm - other_count : 0;
+		
+		seen_count= GPOINTER_TO_INT(purple_conversation_get_data(conv, "webpidgin_seen_count"));
+		sent_count= GPOINTER_TO_INT(purple_conversation_get_data(conv, "webpidgin_sent_count"));
+		seen_count += sent_count;
+		if (totalm >= seen_count)
+			unseen_count=totalm - seen_count;
 		else
 			unseen_count=0;
 
@@ -1878,7 +1885,9 @@ static void show_conversation ( webpidgin_client_t * httpd, PurpleConversation *
 
 	iter=purple_conversation_get_message_history(conv);
 
-	purple_conversation_set_data(conv, "webpidgin_unseen_count", GUINT_TO_POINTER(g_list_length (conv->message_history)));
+	unsigned other_count = GPOINTER_TO_INT(purple_conversation_get_data(conv, "webpidgin_other_count"));
+	purple_conversation_set_data(conv, "webpidgin_seen_count", GUINT_TO_POINTER(g_list_length (conv->message_history) - other_count));
+	purple_conversation_set_data(conv, "webpidgin_sent_count", GUINT_TO_POINTER(0));
 
 	if (gGroupMessages)
 	{
@@ -2650,14 +2659,17 @@ static gboolean ajax_only_count (gpointer data)
 
 		if (conv)
 		{
-		    unsigned unread = g_list_length (conv->message_history);
-		    g_snprintf(buffer, sizeof(buffer), "%u", unread);
-
 			if (strcmp (buffer, hash))
 		    {
+				unsigned totalm, other_count;
+				totalm = g_list_length (conv->message_history);
+				other_count= GPOINTER_TO_INT(purple_conversation_get_data(conv, "webpidgin_other_count"));
+				totalm = totalm >= other_count ? totalm - other_count : 0;
+				g_snprintf(buffer, sizeof(buffer), "%u", totalm);
+
 		    	purple_debug_info("WebPidgin 2-SHAOZ1","conversation>> httpd->fd[%d] md5[%s] hash[%s]\n",httpd->fd, buffer, hash);
 
-		    	g_snprintf(buffer, sizeof(buffer), "conversation:::%u:::%u", unread, unread);
+		    	g_snprintf(buffer, sizeof(buffer), "conversation:::%u:::%u", totalm, totalm);
 		    	client_write(httpd, buffer);
 
 		    	closec=FALSE;
@@ -4437,8 +4449,42 @@ static void received_chat_msg_cb(PurpleAccount *account, char *sender, char *buf
     purple_debug_info("WebPidgin 2-signals", "received-chat-msg (%s, %s, %s, %s, %d)\n",
                                         purple_account_get_username(account), sender, buffer,
                                         (conv != NULL) ? purple_conversation_get_name(conv) : "(null)", flags);
+	rss_add(conv, sender, buffer);
+	}
 
-    rss_add(conv, sender, buffer);
+/**
+ * @brief callback when a Pidgin CHAT message was sent
+ */
+static void sent_chat_msg_cb(PurpleAccount *account, char *buffer,
+                                   int id, void *data)
+{
+
+    purple_debug_info("WebPidgin 2-signals", "sent-chat-msg (%s, %s, %d)\n",
+                                        purple_account_get_username(account), buffer, id);
+
+	PurpleConversation* conv = purple_find_chat(account->gc, id);
+	if (conv) {
+		unsigned count= GPOINTER_TO_INT(purple_conversation_get_data(conv, "webpidgin_sent_count"));
+		purple_conversation_set_data(conv, "webpidgin_sent_count", GUINT_TO_POINTER(count+1));
+	}
+}
+
+
+static void chat_buddy_left_cb(PurpleConversation *conv, const char *name,
+                               const char *reason, void *data)
+{
+	unsigned totalm = g_list_length (conv->message_history);
+	unsigned count= GPOINTER_TO_INT(purple_conversation_get_data(conv, "webpidgin_other_count"));
+	purple_conversation_set_data(conv, "webpidgin_other_count", GUINT_TO_POINTER(mymin(count+1,totalm)));
+}
+
+static void chat_buddy_joined_cb(PurpleConversation *conv, const char *name,
+                                      PurpleConvChatBuddyFlags flags, gboolean new_arrival,
+                                      void *data)
+{
+	unsigned totalm = g_list_length (conv->message_history);
+	unsigned count= GPOINTER_TO_INT(purple_conversation_get_data(conv, "webpidgin_other_count"));
+	purple_conversation_set_data(conv, "webpidgin_other_count", GUINT_TO_POINTER(mymin(count+1,totalm)));
 }
 
 
@@ -4449,6 +4495,12 @@ static void sent_im_msg_cb(PurpleAccount *account, const char *recipient, const 
 {
     purple_debug_info("WebPidgin 2-signals", "sent-im-msg (%s, %s, %s)\n",
                                        purple_account_get_username(account), recipient, buffer);
+	PurpleConversation* conv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_IM, recipient, account);
+	if (conv) {
+		unsigned count= GPOINTER_TO_INT(purple_conversation_get_data(conv, "webpidgin_sent_count"));
+		purple_conversation_set_data(conv, "webpidgin_sent_count", GUINT_TO_POINTER(count+1));
+	}
+
 }
 
 static void get_keys(gpointer key, gpointer value, gpointer user_data)
@@ -4585,6 +4637,12 @@ static gboolean plugin_load(PurplePlugin *plugin)
                           PURPLE_CALLBACK(sent_im_msg_cb), NULL);
     purple_signal_connect(purple_conversations_get_handle(), "received-chat-msg", plugin,
                           PURPLE_CALLBACK(received_chat_msg_cb), NULL);
+    purple_signal_connect(purple_conversations_get_handle(), "sent-chat-msg", plugin,
+                          PURPLE_CALLBACK(sent_chat_msg_cb), NULL);
+    purple_signal_connect(purple_conversations_get_handle(), "chat-buddy-left", plugin,
+                          PURPLE_CALLBACK(chat_buddy_left_cb), NULL);
+    purple_signal_connect(purple_conversations_get_handle(), "chat-buddy-joined", plugin,
+                          PURPLE_CALLBACK(chat_buddy_joined_cb), NULL);
 
 	purple_signal_connect(purple_notify_get_handle(), "displaying-emails-notification",
 						plugin, PURPLE_CALLBACK(notify_emails_cb), NULL);
