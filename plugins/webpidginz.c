@@ -28,7 +28,7 @@ static char  *license = "\
     MA 02111-1307, USA.";
 
 
-#define WEBPIDGIN_VERSION "2.0-Z-9"
+#define WEBPIDGIN_VERSION "2.0-Z-10"
 
 #define mymin(x, y) ((x) < (y) ? (x) : (y))
 
