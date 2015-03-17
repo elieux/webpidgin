@@ -984,7 +984,7 @@ static void client_write_tail( webpidgin_client_t * httpd )
 }
 
 
-static void webpidgin_show_buddy(webpidgin_client_t * httpd,const char * extra_html,PurpleBuddy *buddy )
+static void webpidgin_show_buddy(webpidgin_client_t * httpd,const char * extra_html,PurpleBuddy *buddy, int show_name_instead_of_alias )
 {
     char buffer[4096];
     char * name = g_markup_escape_text (buddy->name, -1);
@@ -998,7 +998,7 @@ static void webpidgin_show_buddy(webpidgin_client_t * httpd,const char * extra_h
 	//const char * proto = purple_account_get_protocol_name( buddy->account );
 	//client_write(httpd, proto);
 
-	alias =get_buddy_name(buddy);
+	alias = g_markup_escape_text(show_name_instead_of_alias ? purple_buddy_get_name(buddy) : get_buddy_name(buddy), -1);
 
     /* Retrieve and display status message, if one exists */
     status = purple_presence_get_active_status(buddy->presence);
@@ -1098,23 +1098,29 @@ static void webpidgin_buddy_list_walk( webpidgin_client_t * httpd,const char * e
 
 
             case PURPLE_BLIST_CONTACT_NODE:{
+                GtkTreeIter child;
                 PurpleContact *contact = (PurpleContact *)node;
-                //if ( contact->alias )
-                {
-                    /// not sure yet
-                    //g_snprintf(buffer,sizeof(buffer),"<B>type=%d ( not sure )</B><BR>\n",node->type);
-                    //client_write(httpd,buffer);
-                //}
-                else
-                {
+                char * name;
+                if ( purple_contact_get_alias(contact) ) {
+                    name = g_markup_escape_text (purple_contact_get_alias(contact), -1);
+                } else {
                     PurpleBuddy *buddy = purple_contact_get_priority_buddy(contact);
-                    webpidgin_show_buddy( httpd, extra_html, buddy );
+                    name = g_markup_escape_text (buddy->name, -1);
                 }
+                g_snprintf(buffer,sizeof(buffer),"<i>%s</i>:<BR>\n",name);
+                g_free(name);
+                client_write(httpd,buffer);
+                PurpleBuddy *buddy = (PurpleBuddy*)purple_blist_node_get_first_child(contact);
+				while (buddy != NULL)
+				{
+                    webpidgin_show_buddy( httpd, extra_html, buddy, 1 );
+					buddy = (PurpleBuddy*)purple_blist_node_get_sibling_next(buddy);
+				}
             }break;
 
             case PURPLE_BLIST_BUDDY_NODE:{
                 PurpleBuddy *buddy = (PurpleBuddy*) node;
-                webpidgin_show_buddy( httpd, extra_html, buddy );
+                webpidgin_show_buddy( httpd, extra_html, buddy, 0 );
             }break;
 
             case PURPLE_BLIST_CHAT_NODE:{
