@@ -1879,7 +1879,6 @@ static void show_conversation ( webpidgin_client_t * httpd, PurpleConversation *
     const char * self;
     unsigned msgCount=0;
     char lastNick [256]="";
-    char lastDate [256]="";
     char lastStyleNick [256]="";
 
 
@@ -1996,13 +1995,7 @@ static void show_conversation ( webpidgin_client_t * httpd, PurpleConversation *
         when = msg->when;
         tm = localtime( &when );
 
-		if (gGroupMessages)
-		{
-	        g_snprintf(date,sizeof(date),"<font color=#444444 size=-1>(%d:%02d)</font> ",tm->tm_hour,tm->tm_min);
-    	}else
-    	{
-    		g_snprintf(date,sizeof(date),"<font color=#444444 size=-1>(%d:%02d:%02d)</font> ",tm->tm_hour,tm->tm_min,tm->tm_sec);
-    	}
+		g_snprintf(date,sizeof(date),"<font color=#444444 size=-1>(%d:%02d:%02d)</font> ",tm->tm_hour,tm->tm_min,tm->tm_sec);
 
     	//purple_debug_info("WebPidgin 2/ASDD","%s %s\n", msg->who, msg->alias);
 
@@ -2013,19 +2006,18 @@ static void show_conversation ( webpidgin_client_t * httpd, PurpleConversation *
 
 
 		///muestro la fecha y el nick
-		if (!gGroupMessages || g_ascii_strcasecmp (lastDate, date) || g_ascii_strcasecmp (nick, lastNick) || g_ascii_strcasecmp (stylenick, lastStyleNick))
+		if (!gGroupMessages || g_ascii_strcasecmp (nick, lastNick) || g_ascii_strcasecmp (stylenick, lastStyleNick))
 	    {
 	    	if (msgCount>0)
 				client_write(httpd,"\n</div>\n");
 
-	       	g_snprintf(lastDate,sizeof(lastDate), "%s", date);
 	       	g_snprintf(lastNick,sizeof(lastNick), "%s", nick);
 	       	g_snprintf(lastStyleNick,sizeof(lastStyleNick), "%s", stylenick);
 
 	       	if (!gGroupMessages)
 	       	{
 	       		client_write(httpd,"\n<div>\n");
-	    		client_write(httpd,date);
+				client_write(httpd,date);
 	       	}
 
 	       	if( gOptionBoldNames )
@@ -2043,8 +2035,6 @@ static void show_conversation ( webpidgin_client_t * httpd, PurpleConversation *
 
             if (gGroupMessages)
             {
-            	client_write(httpd, "&nbsp;");
-				client_write(httpd, date);
 				client_write(httpd, "<BR />\n");
 
 				g_snprintf(buffer,sizeof(buffer),"\n<div class='%s divmsgg'>\n", stylemsg);
@@ -2057,6 +2047,10 @@ static void show_conversation ( webpidgin_client_t * httpd, PurpleConversation *
 
 		/// THE MESSAGE
         {
+	       	if (gGroupMessages)
+	       	{
+				client_write(httpd,date);
+	       	}
 
             char * tmpstr2=NULL;
 			char * tmpstr=NULL;
