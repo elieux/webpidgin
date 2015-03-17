@@ -846,7 +846,7 @@ static void client_write_cmds( webpidgin_client_t * httpd, const char *update )
             }
             client_write(httpd, buffer);*/
 
-            g_snprintf(buffer,sizeof(buffer),"<A HREF='Status' target=\"conv\">CMD</A>: <A HREF='%s' target=\"list\">U</A> | <A HREF='/Accounts' target=\"conv\">A</A> | <A HREF='/Options' target=\"conv\">O</A> | <A HREF='/Help' target=\"conv\">?</A><HR>\n",update);
+            g_snprintf(buffer,sizeof(buffer),"<A HREF='Status' target=\"conv\">CMD</A>: <A HREF='%s' target=\"list\">U</A> | <A HREF='/Buddies'>B</A> | <A HREF='/Accounts' target=\"conv\">A</A> | <A HREF='/Options' target=\"conv\">O</A> | <A HREF='/Help' target=\"conv\">?</A><HR>\n",update);
         }
         else
         {
@@ -874,7 +874,7 @@ static void client_write_cmds( webpidgin_client_t * httpd, const char *update )
         }
         client_write(httpd, buffer);*/
 
-        g_snprintf(buffer,sizeof(buffer),"<A HREF='Status'>CMD</A>: <A HREF='%s'>&nbsp;U&nbsp;</A> | <A HREF='/'>&nbsp;H&nbsp;</A> | <A HREF='/Accounts'>&nbsp;A&nbsp;</A> | <A HREF='/Options'>&nbsp;O&nbsp;</A> | <A HREF='/Help'>&nbsp;?&nbsp;</A><HR>\n",update);
+        g_snprintf(buffer,sizeof(buffer),"<A HREF='Status'>CMD</A>: <A HREF='%s'>&nbsp;U&nbsp;</A> | <A HREF='/Buddies'>&nbsp;B&nbsp;</A> | <A HREF='/'>&nbsp;H&nbsp;</A> | <A HREF='/Accounts'>&nbsp;A&nbsp;</A> | <A HREF='/Options'>&nbsp;O&nbsp;</A> | <A HREF='/Help'>&nbsp;?&nbsp;</A><HR>\n",update);
     }
 
     client_write( httpd,buffer);
@@ -1427,6 +1427,41 @@ static int action_active_list( webpidgin_client_t * httpd, const char * notused 
     show_active_chats( httpd , NULL);
     client_write(httpd,"</div>\n");
 
+	client_write(httpd,"<HR>");
+
+	if (!gOptionWWWFrames)
+		show_last_sessions (httpd, gShowNLastSessions);
+
+
+    if (gUseJavascript)
+    {
+    	char buffer[1024];
+
+	    show_ajax_engine(httpd);
+	    client_write(httpd,"<script type='text/javascript'>");
+
+		client_write(httpd,"window.onload=function(e){\n");
+
+		g_snprintf(buffer,sizeof(buffer), "update(['active_chats'], \"\");");
+		client_write(httpd, buffer);
+
+		client_write(httpd,"}\n");
+
+		client_write(httpd,"</script>");
+	}
+
+    client_write_last_update( httpd );
+    client_write_tail( httpd );
+    return 1;
+}
+
+static int action_active_buddy_list( webpidgin_client_t * httpd, const char * notused )
+{
+    purple_debug_info("WebPidgin 2","%s\n",__FUNCTION__);
+
+    client_write_header( httpd,"/Buddies" );
+
+
 	client_write(httpd,"<div id='active_list'>\n");
     show_active_list(httpd);
     client_write(httpd,"</div>\n");
@@ -1446,7 +1481,7 @@ static int action_active_list( webpidgin_client_t * httpd, const char * notused 
 
 		client_write(httpd,"window.onload=function(e){\n");
 
-		g_snprintf(buffer,sizeof(buffer), "update(new Array ('active_list', 'active_chats'), \"\");");
+		g_snprintf(buffer,sizeof(buffer), "update(['active_list'], \"\");");
 		client_write(httpd, buffer);
 
 		client_write(httpd,"}\n");
@@ -3776,6 +3811,7 @@ static webpidgin_parse_t webpidgin_actions[] = {
 	{ "/ajax",action_ajax },
     { "/", action_root },
     { "/ActiveList", action_active_list },
+    { "/Buddies", action_active_buddy_list },
     { "/login",action_login },
     { "/logout",action_logout },
     { "/conversation",action_conversation },
