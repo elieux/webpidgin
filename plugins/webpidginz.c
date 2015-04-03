@@ -1325,12 +1325,12 @@ static const char* get_active_chats(char * hash)
 		///concateno antes del cambio de estado
 		g_strlcat(bufferhash, punt,sizeof(bufferhash));
 
-		g_snprintf(buffer,sizeof(buffer)," \n<div><A class=\"aClose\" HREF=\"sendMessage?to=id=%p&msg=%%2Fwp+quit\" title=\"Close\">X</A> ", conv);
+		g_snprintf(buffer,sizeof(buffer)," \n<div><A class=\"aClose\" HREF=\"sendMessage?to=id=%p&msg=%%2Fwp+quit\" title=\"Close\">X</A>", conv);
 		g_strlcat(ret, buffer, sizeof(ret));
 
-        g_snprintf(buffer,sizeof(buffer),"<span %s>", extra);
+        g_snprintf(buffer,sizeof(buffer),"%s <span %s>", unseen_count > 0 ? "+" : "&nbsp;&nbsp;", extra);
         g_strlcat(ret, buffer, sizeof(ret));
-
+        
         g_snprintf(buffer,sizeof(buffer),"<A HREF=\"conversation?id=%p%s\" %s title=\"%s\" %s>%s</A> (%d/%d)", conv, extra3, extra2, name, extra_html, title, unseen_count, totalm);
         g_strlcat(ret, buffer, sizeof(ret));
 
