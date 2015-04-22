@@ -1908,7 +1908,7 @@ static void show_conversation ( webpidgin_client_t * httpd, PurpleConversation *
             PurpleConvChatBuddy *buddy;
             buddy = (PurpleConvChatBuddy *) iter->data;
 
-            g_snprintf(buffer,sizeof(buffer),"&nbsp;%s%s", (buddy->alias)?(buddy->alias):(buddy->name), (iter->next)?", ":"");
+            g_snprintf(buffer,sizeof(buffer),"&nbsp;%s%s", (buddy->alias)?(buddy->alias):(buddy->name), (iter->next)?", ":"<br/>");
             client_write(httpd, buffer);
         }
     }
