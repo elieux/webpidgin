@@ -3495,7 +3495,7 @@ static int action_status( webpidgin_client_t * httpd, const char * unused )
 	client_write(httpd,"<img src='logo.png' class='logo'/>\n");
     client_write(httpd,"WebPidgin-Z Version: ");
     client_write(httpd,WEBPIDGIN_VERSION);
-    client_write_vargs(httpd,"<BR>Pidgin Version: %s", VERSION);
+    client_write_vargs(httpd,"<BR>Pidgin Version: %u.%u.%u", purple_major_version, purple_minor_version, purple_micro_version);
     client_write(httpd,"<BR><BR>\n");
 
 
