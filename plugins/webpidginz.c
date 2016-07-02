@@ -29,6 +29,7 @@ static char  *license = "\
 
 
 #define WEBPIDGIN_VERSION "2.0-Z-10"
+#define PURPLE_PLUGINS
 
 #define mymin(x, y) ((x) < (y) ? (x) : (y))
 
