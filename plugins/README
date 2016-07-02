@@ -10,10 +10,13 @@ webpidgin.c:
 webpidginz.c:
     This is a fork of webpidgin.c by shaorang.
 
-Building Plugin:
+Building (stand-alone):
+    `make` or `make LDFLAGS=-lws2_32` (you may still need `internal.h` from Pidgin sources)
 
-Linux:
-    Copy the file to pidgin/plugins
-    make webpidginz.so
-    copy the so to your {INSTALLDIR}/lib/pidgin directory
-    restart pidgin, the plugin should now show up in your plugins list.
+Building (in-tree):
+    Copy sources to pidgin/plugins
+    `make webpidginz.so`
+
+Installation:
+    Copy the .so to your lib/pidgin directory or to your .purple/plugins directory
+    Restart pidgin, the plugin should now show up in your plugins list.
