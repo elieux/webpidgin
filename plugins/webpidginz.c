@@ -117,6 +117,23 @@ static gboolean gUseCustomCSS = 0;
 #define NUM_COLORS 12
 static char *array_colors[NUM_COLORS]={"#A4BEC8", "#55D", "#D55", "#080", "#FC0", "#952", "#F19", "#F50", "#2BA", "#D83", "#808", "#F87"};
 
+static char *strcasestr(const char *s, const char *find) {
+    char c, sc;
+    size_t len;
+
+    if ((c = *find++) != 0) {
+        c = tolower((unsigned char)c);
+        len = strlen(find);
+        do {
+            do {
+                if ((sc = *s++) == 0)
+                    return (NULL);
+            } while ((char)tolower((unsigned char)sc) != c);
+        } while (strncasecmp(s, find, len) != 0);
+        s--;
+    }
+    return ((char *)s);
+}
 
 typedef struct{
     const char * name;
@@ -1271,7 +1288,7 @@ static const char* get_active_chats(char * hash)
         char extra[128] = "";
         char extra2[128] = "";
         char extra3[128] = "";
-        unsigned seen_count=0,unseen_count=0,sent_count=0,other_count=0;
+        unsigned seen_count=0,unseen_count=0,sent_count=0,other_count=0,unseen_mentions=0;
 
         PurpleBuddy * buddy;
 		PurpleStatus *status = NULL;
@@ -1314,6 +1331,7 @@ static const char* get_active_chats(char * hash)
 		
 		seen_count= GPOINTER_TO_INT(purple_conversation_get_data(conv, "webpidgin_seen_count"));
 		sent_count= GPOINTER_TO_INT(purple_conversation_get_data(conv, "webpidgin_sent_count"));
+		unseen_mentions= GPOINTER_TO_INT(purple_conversation_get_data(conv, "webpidgin_unseen_mentions_count"));
 		seen_count += sent_count;
 		if (totalm >= seen_count)
 			unseen_count=totalm - seen_count;
@@ -1329,7 +1347,7 @@ static const char* get_active_chats(char * hash)
 		g_snprintf(buffer,sizeof(buffer)," \n<div><A class=\"aClose\" HREF=\"sendMessage?to=id=%p&msg=%%2Fwp+quit\" title=\"Close\">X</A>", conv);
 		g_strlcat(ret, buffer, sizeof(ret));
 
-        g_snprintf(buffer,sizeof(buffer),"%s <span %s>", unseen_count > 0 ? "+" : "&nbsp;&nbsp;", extra);
+        g_snprintf(buffer,sizeof(buffer),"%s <span %s>", unseen_mentions > 0 ? "*" : unseen_count > 0 ? "+" : "&nbsp;&nbsp;", extra);
         g_strlcat(ret, buffer, sizeof(ret));
         
         g_snprintf(buffer,sizeof(buffer),"<A HREF=\"conversation?id=%p%s\" %s title=\"%s\" %s>%s</A> (%d/%d)", conv, extra3, extra2, name, extra_html, title, unseen_count, totalm);
@@ -1923,6 +1941,7 @@ static void show_conversation ( webpidgin_client_t * httpd, PurpleConversation *
 	unsigned other_count = GPOINTER_TO_INT(purple_conversation_get_data(conv, "webpidgin_other_count"));
 	purple_conversation_set_data(conv, "webpidgin_seen_count", GUINT_TO_POINTER(g_list_length (conv->message_history) - other_count));
 	purple_conversation_set_data(conv, "webpidgin_sent_count", GUINT_TO_POINTER(0));
+	purple_conversation_set_data(conv, "webpidgin_unseen_mentions_count", GUINT_TO_POINTER(0));
 
 	if (gGroupMessages)
 	{
@@ -4476,12 +4495,25 @@ static void received_im_msg_cb(PurpleAccount *account, char *sender, char *buffe
 static void received_chat_msg_cb(PurpleAccount *account, char *sender, char *buffer,
                                    PurpleConversation *conv, int flags, void *data)
 {
-
+    PurpleConvChat *chat;
+    const char *nick;
+    
     purple_debug_info("WebPidgin 2-signals", "received-chat-msg (%s, %s, %s, %s, %d)\n",
                                         purple_account_get_username(account), sender, buffer,
                                         (conv != NULL) ? purple_conversation_get_name(conv) : "(null)", flags);
 	rss_add(conv, sender, buffer);
+
+    if (conv) {
+        chat = purple_conversation_get_chat_data(conv);
+        if (chat) {
+            nick = purple_conv_chat_get_nick(chat);
+            if (strcasestr(buffer, nick) != NULL) {
+                unsigned count= GPOINTER_TO_INT(purple_conversation_get_data(conv, "webpidgin_unseen_mentions_count"));
+                purple_conversation_set_data(conv, "webpidgin_unseen_mentions_count", GUINT_TO_POINTER(count+1));
+            }
+        }
 	}
+}
 
 /**
  * @brief callback when a Pidgin CHAT message was sent
